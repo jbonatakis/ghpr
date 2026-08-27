@@ -1,0 +1,3283 @@
+{
+ "data": {
+  "viewer": {
+   "login": "octo-dev"
+  },
+  "rateLimit": {
+   "limit": 5000,
+   "remaining": 4721,
+   "cost": 2,
+   "resetAt": "2026-08-27T14:39:26Z"
+  },
+  "search": {
+   "issueCount": 47,
+   "pageInfo": {
+    "hasNextPage": true,
+    "endCursor": "Y3Vyc29yOjI1"
+   },
+   "nodes": [
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000001",
+     "number": 712,
+     "title": "Add retry budget to the outbound webhook dispatcher",
+     "url": "https://github.com/acme/agent-runtime/pull/712",
+     "isDraft": false,
+     "createdAt": "2026-08-26T20:01:55Z",
+     "updatedAt": "2026-08-26T20:15:09Z",
+     "additions": 1,
+     "deletions": 9,
+     "changedFiles": 8,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-712",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/agent-runtime"
+     },
+     "author": {
+      "login": "dana-wu"
+     },
+     "comments": {
+      "totalCount": 2,
+      "nodes": [
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-08-26T20:02:40Z"
+       },
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-08-26T20:15:09Z"
+       }
+      ]
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "riley-fisher"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "toni-lange"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Platform Maintainers"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": [
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "github-actions"
+        },
+        "submittedAt": "2026-08-26T20:15:06Z"
+       }
+      ]
+     },
+     "reviewThreads": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "e92c5fb8bee8a4b2d4a78a09ab35071decd8e50a",
+         "author": {
+          "user": {
+           "login": "dana-wu"
+          }
+         },
+         "statusCheckRollup": {
+          "state": "SUCCESS",
+          "contexts": {
+           "totalCount": 7,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "bundle-size",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/712/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "staging-deploy",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/712/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "accessibility",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/712/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "format-check",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/712/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "spell-check",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/712/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "changelog-check",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/712/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "canary",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/712/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000002",
+     "number": 710,
+     "title": "feat(scheduler): priority lanes for long-running import jobs",
+     "url": "https://github.com/acme/agent-runtime/pull/710",
+     "isDraft": false,
+     "createdAt": "2026-08-26T15:59:55Z",
+     "updatedAt": "2026-08-26T19:50:38Z",
+     "additions": 521,
+     "deletions": 15,
+     "changedFiles": 7,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-710",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/agent-runtime"
+     },
+     "author": {
+      "login": "dana-wu"
+     },
+     "comments": {
+      "totalCount": 2,
+      "nodes": [
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-08-26T16:26:18Z"
+       },
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-08-26T16:27:35Z"
+       }
+      ]
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "riley-fisher"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "toni-lange"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Platform Maintainers"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": [
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "morgan-bell"
+        },
+        "submittedAt": "2026-08-26T17:32:01Z"
+       },
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "github-actions"
+        },
+        "submittedAt": "2026-08-26T16:35:11Z"
+       }
+      ]
+     },
+     "reviewThreads": {
+      "totalCount": 7,
+      "nodes": [
+       {
+        "isResolved": true,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       }
+      ]
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "bae047f010124c44abe9b6e3823cf4bd1d116cb8",
+         "author": {
+          "user": {
+           "login": "dana-wu"
+          }
+         },
+         "statusCheckRollup": {
+          "state": "SUCCESS",
+          "contexts": {
+           "totalCount": 7,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "bundle-size",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/710/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "load-test",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/710/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "accessibility",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/710/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "license-check",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/710/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "api-contract",
+             "status": "COMPLETED",
+             "conclusion": "SKIPPED",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/710/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "mutation-tests",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/710/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "secrets-scan",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/710/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000003",
+     "number": 702,
+     "title": "Move connection pooling behind a configurable driver interface",
+     "url": "https://github.com/acme/agent-runtime/pull/702",
+     "isDraft": false,
+     "createdAt": "2026-08-25T02:17:44Z",
+     "updatedAt": "2026-08-26T22:55:58Z",
+     "additions": 7244,
+     "deletions": 1728,
+     "changedFiles": 209,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-702",
+     "baseRefName": "topic/base-702",
+     "repository": {
+      "nameWithOwner": "acme/agent-runtime"
+     },
+     "author": {
+      "login": "kim-rivera"
+     },
+     "comments": {
+      "totalCount": 4,
+      "nodes": [
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-08-25T02:18:28Z"
+       },
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-08-25T02:19:44Z"
+       },
+       {
+        "author": {
+         "login": "kim-rivera"
+        },
+        "createdAt": "2026-08-26T16:24:24Z"
+       }
+      ]
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Platform Maintainers"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": []
+     },
+     "reviewThreads": {
+      "totalCount": 1,
+      "nodes": [
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       }
+      ]
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "93f57a2cfed9cacc27c5d12a99f62ef738eee688",
+         "author": {
+          "user": {
+           "login": "kim-rivera"
+          }
+         },
+         "statusCheckRollup": {
+          "state": "SUCCESS",
+          "contexts": {
+           "totalCount": 6,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "load-test",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/702/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "accessibility",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/702/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "license-check",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/702/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "api-contract",
+             "status": "COMPLETED",
+             "conclusion": "SKIPPED",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/702/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "mutation-tests",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/702/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "rollback-check",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/702/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000004",
+     "number": 684,
+     "title": "Fix off-by-one in the pagination cursor for archived records",
+     "url": "https://github.com/acme/agent-runtime/pull/684",
+     "isDraft": false,
+     "createdAt": "2026-08-20T20:43:07Z",
+     "updatedAt": "2026-08-20T21:35:43Z",
+     "additions": 3215,
+     "deletions": 38,
+     "changedFiles": 7,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-684",
+     "baseRefName": "topic/base-684",
+     "repository": {
+      "nameWithOwner": "acme/agent-runtime"
+     },
+     "author": {
+      "login": "alex-moreno"
+     },
+     "comments": {
+      "totalCount": 1,
+      "nodes": [
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-08-20T20:43:56Z"
+       }
+      ]
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "riley-fisher"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "toni-lange"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Platform Maintainers"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": []
+     },
+     "reviewThreads": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "a71100d5c1427dfe900518ea0ac6a62dbf26a981",
+         "author": {
+          "user": {
+           "login": "alex-moreno"
+          }
+         },
+         "statusCheckRollup": {
+          "state": "SUCCESS",
+          "contexts": {
+           "totalCount": 6,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "load-test",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/684/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "accessibility",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/684/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "license-check",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/684/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "api-contract",
+             "status": "COMPLETED",
+             "conclusion": "SKIPPED",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/684/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "dynamic-analysis",
+             "status": "COMPLETED",
+             "conclusion": "SKIPPED",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/684/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "canary",
+             "status": "COMPLETED",
+             "conclusion": "SKIPPED",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/684/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000005",
+     "number": 676,
+     "title": "chore: replace the hand-rolled cache with an LRU implementation",
+     "url": "https://github.com/acme/agent-runtime/pull/676",
+     "isDraft": false,
+     "createdAt": "2026-08-18T20:58:10Z",
+     "updatedAt": "2026-08-25T16:01:00Z",
+     "additions": 5598,
+     "deletions": 6,
+     "changedFiles": 22,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-676",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/agent-runtime"
+     },
+     "author": {
+      "login": "dana-wu"
+     },
+     "comments": {
+      "totalCount": 3,
+      "nodes": [
+       {
+        "author": {
+         "login": "code-review-bot"
+        },
+        "createdAt": "2026-08-18T20:58:13Z"
+       },
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-08-18T20:58:55Z"
+       },
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-08-18T21:00:11Z"
+       }
+      ]
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "riley-fisher"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "toni-lange"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Platform Maintainers"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": [
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "github-actions"
+        },
+        "submittedAt": "2026-08-19T14:07:19Z"
+       },
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "code-review-bot"
+        },
+        "submittedAt": "2026-08-18T20:59:38Z"
+       }
+      ]
+     },
+     "reviewThreads": {
+      "totalCount": 3,
+      "nodes": [
+       {
+        "isResolved": true,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": true,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 3
+        }
+       },
+       {
+        "isResolved": true,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 3
+        }
+       }
+      ]
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "777508f8a770b8bc17e75d238a7e5c0c3feba34e",
+         "author": {
+          "user": {
+           "login": "dana-wu"
+          }
+         },
+         "statusCheckRollup": {
+          "state": "SUCCESS",
+          "contexts": {
+           "totalCount": 12,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "bundle-size",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/676/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "staging-deploy",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/676/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "load-test",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/676/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "accessibility",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/676/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "spell-check",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/676/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "license-check",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/676/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "api-contract",
+             "status": "COMPLETED",
+             "conclusion": "SKIPPED",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/676/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "canary",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/676/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "changelog-check",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/676/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "mutation-tests",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/676/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "terraform-plan",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/676/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "secrets-scan",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/676/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000006",
+     "number": 99,
+     "title": "Introduce structured logging across the ingestion pipeline",
+     "url": "https://github.com/acme/retention-policy-enforcer-export-history/pull/99",
+     "isDraft": false,
+     "createdAt": "2026-08-04T07:19:53Z",
+     "updatedAt": "2026-08-05T10:36:39Z",
+     "additions": 1163,
+     "deletions": 620,
+     "changedFiles": 7,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-99",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/retention-policy-enforcer-export-history"
+     },
+     "author": {
+      "login": "morgan-bell"
+     },
+     "comments": {
+      "totalCount": 6,
+      "nodes": [
+       {
+        "author": {
+         "login": "code-review-bot"
+        },
+        "createdAt": "2026-08-05T09:54:38Z"
+       },
+       {
+        "author": {
+         "login": "code-review-bot"
+        },
+        "createdAt": "2026-08-05T10:10:53Z"
+       },
+       {
+        "author": {
+         "login": "code-review-bot"
+        },
+        "createdAt": "2026-08-05T10:35:13Z"
+       }
+      ]
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Core Services"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "octo-dev"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": [
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "github-actions"
+        },
+        "submittedAt": "2026-08-05T10:35:04Z"
+       },
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "code-review-bot"
+        },
+        "submittedAt": "2026-08-05T10:36:39Z"
+       }
+      ]
+     },
+     "reviewThreads": {
+      "totalCount": 24,
+      "nodes": [
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 3
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 3
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 3
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       }
+      ]
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "8db9e2d7b5726819b318ac9d944691d9dcc3e4aa",
+         "author": {
+          "user": {
+           "login": "morgan-bell"
+          }
+         },
+         "statusCheckRollup": {
+          "state": "SUCCESS",
+          "contexts": {
+           "totalCount": 4,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "bundle-size",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/retention-policy-enforcer-export-history/pull/99/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "flaky-detect",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/retention-policy-enforcer-export-history/pull/99/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "release-notes",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/retention-policy-enforcer-export-history/pull/99/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "license-check",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/retention-policy-enforcer-export-history/pull/99/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000007",
+     "number": 113,
+     "title": "Split the monolithic settings module into per-domain packages",
+     "url": "https://github.com/acme/retention-policy-service/pull/113",
+     "isDraft": false,
+     "createdAt": "2026-08-04T07:07:00Z",
+     "updatedAt": "2026-08-04T15:44:53Z",
+     "additions": 4259,
+     "deletions": 2142,
+     "changedFiles": 6,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-113",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/retention-policy-service"
+     },
+     "author": {
+      "login": "morgan-bell"
+     },
+     "comments": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Core Services"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "pat-whitley"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": []
+     },
+     "reviewThreads": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "937871fc7de3ff2c8f1f68c450936af31dcf4991",
+         "author": {
+          "user": {
+           "login": "morgan-bell"
+          }
+         },
+         "statusCheckRollup": {
+          "state": "SUCCESS",
+          "contexts": {
+           "totalCount": 2,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "flaky-detect",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/retention-policy-service/pull/113/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "release-notes",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/retention-policy-service/pull/113/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000008",
+     "number": 1312,
+     "title": "Guard the bulk delete endpoint behind an explicit confirmation",
+     "url": "https://github.com/acme/data-warehouse/pull/1312",
+     "isDraft": true,
+     "createdAt": "2026-07-31T20:52:11Z",
+     "updatedAt": "2026-08-03T16:02:56Z",
+     "additions": 18,
+     "deletions": 0,
+     "changedFiles": 2,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-1312",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/data-warehouse"
+     },
+     "author": {
+      "login": "kim-rivera"
+     },
+     "comments": {
+      "totalCount": 1,
+      "nodes": [
+       {
+        "author": {
+         "login": "code-review-bot"
+        },
+        "createdAt": "2026-07-31T20:52:15Z"
+       }
+      ]
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Core Services"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": [
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "github-actions"
+        },
+        "submittedAt": "2026-07-31T21:14:16Z"
+       },
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "code-review-bot"
+        },
+        "submittedAt": "2026-07-31T20:53:30Z"
+       }
+      ]
+     },
+     "reviewThreads": {
+      "totalCount": 4,
+      "nodes": [
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       }
+      ]
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "989788e42be81204f9de2cdb025d66e87bdbda2d",
+         "author": {
+          "user": {
+           "login": "kim-rivera"
+          }
+         },
+         "statusCheckRollup": {
+          "state": "SUCCESS",
+          "contexts": {
+           "totalCount": 5,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "bundle-size",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/data-warehouse/pull/1312/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "security-scan",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/data-warehouse/pull/1312/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "notify",
+             "status": "COMPLETED",
+             "conclusion": "SKIPPED",
+             "detailsUrl": "https://github.com/acme/data-warehouse/pull/1312/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "type-check",
+             "status": "COMPLETED",
+             "conclusion": "SKIPPED",
+             "detailsUrl": "https://github.com/acme/data-warehouse/pull/1312/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "perf-benchmark",
+             "status": "COMPLETED",
+             "conclusion": "SKIPPED",
+             "detailsUrl": "https://github.com/acme/data-warehouse/pull/1312/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000009",
+     "number": 13,
+     "title": "perf: batch the per-row lookups in the",
+     "url": "https://github.com/acme/data-warehouse-sync/pull/13",
+     "isDraft": false,
+     "createdAt": "2026-07-31T16:11:26Z",
+     "updatedAt": "2026-07-31T21:43:35Z",
+     "additions": 32,
+     "deletions": 0,
+     "changedFiles": 3,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-13",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/data-warehouse-sync"
+     },
+     "author": {
+      "login": "morgan-bell"
+     },
+     "comments": {
+      "totalCount": 1,
+      "nodes": [
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-07-31T16:12:09Z"
+       }
+      ]
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Core Services"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "priya-shah"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": [
+       {
+        "state": "APPROVED",
+        "author": {
+         "login": "noor-abadi"
+        },
+        "submittedAt": "2026-07-31T16:11:47Z"
+       }
+      ]
+     },
+     "reviewThreads": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "1fea035b5fe09ccfd79e86c5a90eafe36cb8e507",
+         "author": {
+          "user": {
+           "login": "morgan-bell"
+          }
+         },
+         "statusCheckRollup": {
+          "state": "FAILURE",
+          "contexts": {
+           "totalCount": 1,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "canary",
+             "status": "COMPLETED",
+             "conclusion": "FAILURE",
+             "detailsUrl": "https://github.com/acme/data-warehouse-sync/pull/13/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000010",
+     "number": 140,
+     "title": "Document the migration path for the",
+     "url": "https://github.com/acme/ci-pipelines/pull/140",
+     "isDraft": false,
+     "createdAt": "2026-07-31T15:43:46Z",
+     "updatedAt": "2026-08-01T03:28:34Z",
+     "additions": 323,
+     "deletions": 0,
+     "changedFiles": 11,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-140",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/ci-pipelines"
+     },
+     "author": {
+      "login": "morgan-bell"
+     },
+     "comments": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Core Services"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "priya-shah"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": [
+       {
+        "state": "APPROVED",
+        "author": {
+         "login": "noor-abadi"
+        },
+        "submittedAt": "2026-07-31T15:46:51Z"
+       }
+      ]
+     },
+     "reviewThreads": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "97dfabcda5e4772b7cad2a6367e59bc592cd694c",
+         "author": {
+          "user": {
+           "login": "morgan-bell"
+          }
+         },
+         "statusCheckRollup": {
+          "state": "FAILURE",
+          "contexts": {
+           "totalCount": 1,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "license-check",
+             "status": "COMPLETED",
+             "conclusion": "FAILURE",
+             "detailsUrl": "https://github.com/acme/ci-pipelines/pull/140/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000011",
+     "number": 112,
+     "title": "Teach the importer to resume from a",
+     "url": "https://github.com/acme/retention-policy-service/pull/112",
+     "isDraft": false,
+     "createdAt": "2026-07-31T09:59:27Z",
+     "updatedAt": "2026-07-31T11:21:48Z",
+     "additions": 75,
+     "deletions": 0,
+     "changedFiles": 1,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-112",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/retention-policy-service"
+     },
+     "author": {
+      "login": "morgan-bell"
+     },
+     "comments": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Core Services"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "priya-shah"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": [
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "github-actions"
+        },
+        "submittedAt": "2026-07-31T10:05:02Z"
+       },
+       {
+        "state": "APPROVED",
+        "author": {
+         "login": "noor-abadi"
+        },
+        "submittedAt": "2026-07-31T11:21:48Z"
+       }
+      ]
+     },
+     "reviewThreads": {
+      "totalCount": 1,
+      "nodes": [
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       }
+      ]
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "16e2641be0f3c050d543ada26e4dd5feb0061166",
+         "author": {
+          "user": {
+           "login": "morgan-bell"
+          }
+         },
+         "statusCheckRollup": {
+          "state": "SUCCESS",
+          "contexts": {
+           "totalCount": 4,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "container-scan",
+             "status": "COMPLETED",
+             "conclusion": "SKIPPED",
+             "detailsUrl": "https://github.com/acme/retention-policy-service/pull/112/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "bundle-size",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/retention-policy-service/pull/112/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "flaky-detect",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/retention-policy-service/pull/112/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "release-notes",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/retention-policy-service/pull/112/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000012",
+     "number": 12,
+     "title": "refactor: extract the retry policy into a",
+     "url": "https://github.com/acme/data-warehouse-sync/pull/12",
+     "isDraft": false,
+     "createdAt": "2026-07-31T09:25:01Z",
+     "updatedAt": "2026-07-31T11:21:54Z",
+     "additions": 75,
+     "deletions": 0,
+     "changedFiles": 1,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-12",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/data-warehouse-sync"
+     },
+     "author": {
+      "login": "morgan-bell"
+     },
+     "comments": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Core Services"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "priya-shah"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": [
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "github-actions"
+        },
+        "submittedAt": "2026-07-31T09:28:37Z"
+       },
+       {
+        "state": "APPROVED",
+        "author": {
+         "login": "noor-abadi"
+        },
+        "submittedAt": "2026-07-31T11:21:54Z"
+       }
+      ]
+     },
+     "reviewThreads": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "8104af55f0330444a0852d2da82e1ca445e95c4c",
+         "author": {
+          "user": {
+           "login": "morgan-bell"
+          }
+         },
+         "statusCheckRollup": {
+          "state": "FAILURE",
+          "contexts": {
+           "totalCount": 2,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "canary",
+             "status": "COMPLETED",
+             "conclusion": "FAILURE",
+             "detailsUrl": "https://github.com/acme/data-warehouse-sync/pull/12/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "bundle-size",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/data-warehouse-sync/pull/12/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000013",
+     "number": 139,
+     "title": "Add retry budget to the outbound webhook",
+     "url": "https://github.com/acme/ci-pipelines/pull/139",
+     "isDraft": false,
+     "createdAt": "2026-07-31T09:18:47Z",
+     "updatedAt": "2026-07-31T11:21:56Z",
+     "additions": 75,
+     "deletions": 0,
+     "changedFiles": 1,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-139",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/ci-pipelines"
+     },
+     "author": {
+      "login": "morgan-bell"
+     },
+     "comments": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Core Services"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "priya-shah"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": [
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "github-actions"
+        },
+        "submittedAt": "2026-07-31T09:24:13Z"
+       },
+       {
+        "state": "APPROVED",
+        "author": {
+         "login": "noor-abadi"
+        },
+        "submittedAt": "2026-07-31T11:21:56Z"
+       }
+      ]
+     },
+     "reviewThreads": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "b37e94a46f9c081bfe021f578242e2b19a7473e8",
+         "author": {
+          "user": {
+           "login": "morgan-bell"
+          }
+         },
+         "statusCheckRollup": {
+          "state": "SUCCESS",
+          "contexts": {
+           "totalCount": 3,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "container-scan",
+             "status": "COMPLETED",
+             "conclusion": "SKIPPED",
+             "detailsUrl": "https://github.com/acme/ci-pipelines/pull/139/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "license-check",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/ci-pipelines/pull/139/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "bundle-size",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/ci-pipelines/pull/139/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000014",
+     "number": 655,
+     "title": "feat(scheduler): priority",
+     "url": "https://github.com/acme/agent-runtime/pull/655",
+     "isDraft": false,
+     "createdAt": "2026-07-28T19:01:41Z",
+     "updatedAt": "2026-07-31T15:59:42Z",
+     "additions": 833,
+     "deletions": 202,
+     "changedFiles": 15,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": null,
+     "headRefName": "topic/change-655",
+     "baseRefName": "topic/base-655",
+     "repository": {
+      "nameWithOwner": "acme/agent-runtime"
+     },
+     "author": {
+      "login": "devin-osei"
+     },
+     "comments": {
+      "totalCount": 2,
+      "nodes": [
+       {
+        "author": {
+         "login": "code-review-bot"
+        },
+        "createdAt": "2026-07-28T19:01:44Z"
+       },
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-07-28T19:16:46Z"
+       }
+      ]
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "riley-fisher"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "toni-lange"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Platform Maintainers"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": [
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "code-review-bot"
+        },
+        "submittedAt": "2026-07-28T19:03:46Z"
+       }
+      ]
+     },
+     "reviewThreads": {
+      "totalCount": 4,
+      "nodes": [
+       {
+        "isResolved": true,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": true,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": true,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": true,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       }
+      ]
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "a86cc34b495b6e6a49bb86a0c581cfd54215ac4d",
+         "author": {
+          "user": null
+         },
+         "statusCheckRollup": {
+          "state": "SUCCESS",
+          "contexts": {
+           "totalCount": 6,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "load-test",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/655/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "accessibility",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/655/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "license-check",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/655/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "api-contract",
+             "status": "COMPLETED",
+             "conclusion": "SKIPPED",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/655/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "mutation-tests",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/655/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "secrets-scan",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/655/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000015",
+     "number": 654,
+     "title": "Move connection",
+     "url": "https://github.com/acme/agent-runtime/pull/654",
+     "isDraft": false,
+     "createdAt": "2026-07-28T19:01:18Z",
+     "updatedAt": "2026-07-31T15:54:13Z",
+     "additions": 369,
+     "deletions": 479,
+     "changedFiles": 9,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": null,
+     "headRefName": "topic/change-654",
+     "baseRefName": "topic/base-654",
+     "repository": {
+      "nameWithOwner": "acme/agent-runtime"
+     },
+     "author": {
+      "login": "devin-osei"
+     },
+     "comments": {
+      "totalCount": 2,
+      "nodes": [
+       {
+        "author": {
+         "login": "code-review-bot"
+        },
+        "createdAt": "2026-07-28T19:01:20Z"
+       },
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-07-28T19:01:57Z"
+       }
+      ]
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "riley-fisher"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "toni-lange"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Platform Maintainers"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": [
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "code-review-bot"
+        },
+        "submittedAt": "2026-07-28T19:02:57Z"
+       }
+      ]
+     },
+     "reviewThreads": {
+      "totalCount": 1,
+      "nodes": [
+       {
+        "isResolved": true,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       }
+      ]
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "e1e10b779e5f9cd8cdaa0b82d3cc88af6991f1ee",
+         "author": {
+          "user": null
+         },
+         "statusCheckRollup": {
+          "state": "SUCCESS",
+          "contexts": {
+           "totalCount": 6,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "load-test",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/654/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "accessibility",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/654/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "license-check",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/654/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "api-contract",
+             "status": "COMPLETED",
+             "conclusion": "SKIPPED",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/654/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "mutation-tests",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/654/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "secrets-scan",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/654/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000016",
+     "number": 647,
+     "title": "Fix off-by-one",
+     "url": "https://github.com/acme/agent-runtime/pull/647",
+     "isDraft": false,
+     "createdAt": "2026-07-23T18:00:35Z",
+     "updatedAt": "2026-07-31T15:48:38Z",
+     "additions": 1658,
+     "deletions": 14,
+     "changedFiles": 13,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-647",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/agent-runtime"
+     },
+     "author": {
+      "login": "devin-osei"
+     },
+     "comments": {
+      "totalCount": 4,
+      "nodes": [
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-07-23T18:01:04Z"
+       },
+       {
+        "author": {
+         "login": "devin-osei"
+        },
+        "createdAt": "2026-07-23T19:50:42Z"
+       },
+       {
+        "author": {
+         "login": "code-review-bot"
+        },
+        "createdAt": "2026-07-23T19:50:45Z"
+       }
+      ]
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "riley-fisher"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "toni-lange"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Platform Maintainers"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": [
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "github-actions"
+        },
+        "submittedAt": "2026-07-31T15:48:39Z"
+       },
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "code-review-bot"
+        },
+        "submittedAt": "2026-07-23T19:52:16Z"
+       }
+      ]
+     },
+     "reviewThreads": {
+      "totalCount": 12,
+      "nodes": [
+       {
+        "isResolved": true,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": true,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": true,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": true,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": true,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": true,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": true,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": true,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 4
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       }
+      ]
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "2821b5c2b8609448f723839474f88b72335028d3",
+         "author": {
+          "user": null
+         },
+         "statusCheckRollup": {
+          "state": "SUCCESS",
+          "contexts": {
+           "totalCount": 11,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "bundle-size",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/647/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "staging-deploy",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/647/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "load-test",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/647/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "accessibility",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/647/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "spell-check",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/647/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "license-check",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/647/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "api-contract",
+             "status": "COMPLETED",
+             "conclusion": "SKIPPED",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/647/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "changelog-check",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/647/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "canary",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/647/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "mutation-tests",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/647/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "secrets-scan",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/647/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000017",
+     "number": 1293,
+     "title": "chore: replace the hand-rolled cache with an LRU",
+     "url": "https://github.com/acme/data-warehouse/pull/1293",
+     "isDraft": false,
+     "createdAt": "2026-07-20T22:00:06Z",
+     "updatedAt": "2026-07-24T17:36:53Z",
+     "additions": 3839,
+     "deletions": 3,
+     "changedFiles": 28,
+     "mergeable": "CONFLICTING",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-1293",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/data-warehouse"
+     },
+     "author": {
+      "login": "kim-rivera"
+     },
+     "comments": {
+      "totalCount": 1,
+      "nodes": [
+       {
+        "author": {
+         "login": "code-review-bot"
+        },
+        "createdAt": "2026-07-20T22:00:10Z"
+       }
+      ]
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Core Services"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": [
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "code-review-bot"
+        },
+        "submittedAt": "2026-07-20T22:01:31Z"
+       }
+      ]
+     },
+     "reviewThreads": {
+      "totalCount": 3,
+      "nodes": [
+       {
+        "isResolved": true,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": true,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": true,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 2
+        }
+       }
+      ]
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "11771081d8811d8d89b25ddba11c4a5bb61e0c43",
+         "author": {
+          "user": {
+           "login": "kim-rivera"
+          }
+         },
+         "statusCheckRollup": {
+          "state": "SUCCESS",
+          "contexts": {
+           "totalCount": 4,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "security-scan",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/data-warehouse/pull/1293/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "notify",
+             "status": "COMPLETED",
+             "conclusion": "SKIPPED",
+             "detailsUrl": "https://github.com/acme/data-warehouse/pull/1293/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "type-check",
+             "status": "COMPLETED",
+             "conclusion": "SKIPPED",
+             "detailsUrl": "https://github.com/acme/data-warehouse/pull/1293/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "perf-benchmark",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/data-warehouse/pull/1293/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000018",
+     "number": 1285,
+     "title": "Introduce structured logging across the ingestion",
+     "url": "https://github.com/acme/data-warehouse/pull/1285",
+     "isDraft": true,
+     "createdAt": "2026-07-09T22:38:18Z",
+     "updatedAt": "2026-08-03T16:04:49Z",
+     "additions": 12,
+     "deletions": 6,
+     "changedFiles": 1,
+     "mergeable": "CONFLICTING",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-1285",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/data-warehouse"
+     },
+     "author": {
+      "login": "kim-rivera"
+     },
+     "comments": {
+      "totalCount": 1,
+      "nodes": [
+       {
+        "author": {
+         "login": "code-review-bot"
+        },
+        "createdAt": "2026-07-09T22:38:34Z"
+       }
+      ]
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Core Services"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": [
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "code-review-bot"
+        },
+        "submittedAt": "2026-07-09T22:39:46Z"
+       }
+      ]
+     },
+     "reviewThreads": {
+      "totalCount": 1,
+      "nodes": [
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       }
+      ]
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "fae4c259489fbbd5fdd392a508c6e2f9c6b48a45",
+         "author": {
+          "user": {
+           "login": "kim-rivera"
+          }
+         },
+         "statusCheckRollup": null
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000019",
+     "number": 138,
+     "title": "Split the monolithic settings module into",
+     "url": "https://github.com/acme/ci-pipelines/pull/138",
+     "isDraft": false,
+     "createdAt": "2026-06-25T18:16:50Z",
+     "updatedAt": "2026-06-25T18:16:51Z",
+     "additions": 12,
+     "deletions": 9,
+     "changedFiles": 2,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-138",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/ci-pipelines"
+     },
+     "author": {
+      "login": "github-actions"
+     },
+     "comments": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Core Services"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": []
+     },
+     "reviewThreads": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "7b45be1746ed9f550578df4b771d68a0a62175b1",
+         "author": {
+          "user": {
+           "login": "pat-whitley"
+          }
+         },
+         "statusCheckRollup": null
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000020",
+     "number": 136,
+     "title": "Guard the bulk delete endpoint behind an",
+     "url": "https://github.com/acme/ci-pipelines/pull/136",
+     "isDraft": false,
+     "createdAt": "2026-06-23T22:26:01Z",
+     "updatedAt": "2026-06-23T22:26:02Z",
+     "additions": 12,
+     "deletions": 9,
+     "changedFiles": 2,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-136",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/ci-pipelines"
+     },
+     "author": {
+      "login": "github-actions"
+     },
+     "comments": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Core Services"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": []
+     },
+     "reviewThreads": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "bbda8adb4923848316d27705e408a7c7b873de9b",
+         "author": {
+          "user": {
+           "login": "kim-rivera"
+          }
+         },
+         "statusCheckRollup": null
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000021",
+     "number": 40,
+     "title": "perf: batch the per-row lookups in the",
+     "url": "https://github.com/acme/starfield/pull/40",
+     "isDraft": false,
+     "createdAt": "2026-06-02T14:50:34Z",
+     "updatedAt": "2026-06-02T20:51:03Z",
+     "additions": 268,
+     "deletions": 0,
+     "changedFiles": 1,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": null,
+     "headRefName": "topic/change-40",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/starfield"
+     },
+     "author": {
+      "login": "casey-hart"
+     },
+     "comments": {
+      "totalCount": 2,
+      "nodes": [
+       {
+        "author": {
+         "login": "edge-deploy-bot"
+        },
+        "createdAt": "2026-06-02T14:50:41Z"
+       },
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-06-02T20:51:03Z"
+       }
+      ]
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "morgan-bell"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "octo-dev"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": []
+     },
+     "reviewThreads": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "394d5ea248cb1694381c200de93536e2c5618971",
+         "author": {
+          "user": {
+           "login": "casey-hart"
+          }
+         },
+         "statusCheckRollup": {
+          "state": "FAILURE",
+          "contexts": {
+           "totalCount": 2,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "coverage",
+             "status": "COMPLETED",
+             "conclusion": "CANCELLED",
+             "detailsUrl": "https://github.com/acme/starfield/pull/40/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "dependency-audit",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/starfield/pull/40/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000022",
+     "number": 39,
+     "title": "Document the migration path for",
+     "url": "https://github.com/acme/starfield/pull/39",
+     "isDraft": false,
+     "createdAt": "2026-05-15T16:49:43Z",
+     "updatedAt": "2026-05-15T16:57:34Z",
+     "additions": 147,
+     "deletions": 0,
+     "changedFiles": 1,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": null,
+     "headRefName": "topic/change-39",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/starfield"
+     },
+     "author": {
+      "login": "casey-hart"
+     },
+     "comments": {
+      "totalCount": 2,
+      "nodes": [
+       {
+        "author": {
+         "login": "edge-deploy-bot"
+        },
+        "createdAt": "2026-05-15T16:50:36Z"
+       },
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-05-15T16:53:39Z"
+       }
+      ]
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "sam-tanaka"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "morgan-bell"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "octo-dev"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": []
+     },
+     "reviewThreads": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "37aa76f6215f1ec4c9a1eddaf4b9c41ea42836ca",
+         "author": {
+          "user": {
+           "login": "casey-hart"
+          }
+         },
+         "statusCheckRollup": {
+          "state": "SUCCESS",
+          "contexts": {
+           "totalCount": 2,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "coverage",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/starfield/pull/39/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "dependency-audit",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/starfield/pull/39/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000023",
+     "number": 134,
+     "title": "Teach the importer to resume from a",
+     "url": "https://github.com/acme/ci-pipelines/pull/134",
+     "isDraft": false,
+     "createdAt": "2026-05-12T23:35:16Z",
+     "updatedAt": "2026-05-12T23:35:17Z",
+     "additions": 12,
+     "deletions": 9,
+     "changedFiles": 2,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-134",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/ci-pipelines"
+     },
+     "author": {
+      "login": "github-actions"
+     },
+     "comments": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Core Services"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": []
+     },
+     "reviewThreads": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "04acb74fa5f81896328245d1838acdd4d57c36d8",
+         "author": {
+          "user": {
+           "login": "pat-whitley"
+          }
+         },
+         "statusCheckRollup": null
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000024",
+     "number": 132,
+     "title": "refactor: extract the retry policy into a",
+     "url": "https://github.com/acme/ci-pipelines/pull/132",
+     "isDraft": false,
+     "createdAt": "2026-05-12T22:45:16Z",
+     "updatedAt": "2026-05-12T22:45:17Z",
+     "additions": 12,
+     "deletions": 9,
+     "changedFiles": 2,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-132",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/ci-pipelines"
+     },
+     "author": {
+      "login": "github-actions"
+     },
+     "comments": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Core Services"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": []
+     },
+     "reviewThreads": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "67f7949f0dc06eb0dc73c5095df2d9fdc2b3ce74",
+         "author": {
+          "user": {
+           "login": "pat-whitley"
+          }
+         },
+         "statusCheckRollup": null
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000025",
+     "number": 130,
+     "title": "Add retry budget to the outbound webhook",
+     "url": "https://github.com/acme/ci-pipelines/pull/130",
+     "isDraft": false,
+     "createdAt": "2026-05-08T20:38:24Z",
+     "updatedAt": "2026-05-08T20:38:25Z",
+     "additions": 12,
+     "deletions": 9,
+     "changedFiles": 2,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-130",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/ci-pipelines"
+     },
+     "author": {
+      "login": "github-actions"
+     },
+     "comments": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Core Services"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": []
+     },
+     "reviewThreads": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "d2b43dbdb5302b080fad3c0abf168b9c21c905c5",
+         "author": {
+          "user": {
+           "login": "pat-whitley"
+          }
+         },
+         "statusCheckRollup": null
+        }
+       }
+      ]
+     }
+    }
+   ]
+  }
+ }
+}

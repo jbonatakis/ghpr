@@ -1,0 +1,1374 @@
+{
+ "data": {
+  "viewer": {
+   "login": "octo-dev"
+  },
+  "rateLimit": {
+   "limit": 5000,
+   "remaining": 4725,
+   "cost": 2,
+   "resetAt": "2026-08-27T14:39:26Z"
+  },
+  "search": {
+   "issueCount": 11,
+   "pageInfo": {
+    "hasNextPage": false,
+    "endCursor": "Y3Vyc29yOjEx"
+   },
+   "nodes": [
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000001",
+     "number": 828,
+     "title": "Add retry budget to the outbound webhook dispatcher",
+     "url": "https://github.com/acme/sensor-presence-collector/pull/828",
+     "isDraft": false,
+     "createdAt": "2026-08-26T20:22:10Z",
+     "updatedAt": "2026-08-27T14:02:18Z",
+     "additions": 283,
+     "deletions": 10,
+     "changedFiles": 3,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": null,
+     "headRefName": "topic/change-828",
+     "baseRefName": "topic/base-828",
+     "repository": {
+      "nameWithOwner": "acme/sensor-presence-collector"
+     },
+     "author": {
+      "login": "octo-dev"
+     },
+     "comments": {
+      "totalCount": 1,
+      "nodes": [
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-08-26T20:26:11Z"
+       }
+      ]
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "priya-shah"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": [
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "morgan-bell"
+        },
+        "submittedAt": "2026-08-27T13:41:27Z"
+       }
+      ]
+     },
+     "reviewThreads": {
+      "totalCount": 1,
+      "nodes": [
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 2
+        }
+       }
+      ]
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "64ee193dd92349ef9102f2d3f47c435170a026b5",
+         "author": {
+          "user": {
+           "login": "octo-dev"
+          }
+         },
+         "statusCheckRollup": {
+          "state": "SUCCESS",
+          "contexts": {
+           "totalCount": 3,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "docs-check",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/sensor-presence-collector/pull/828/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "e2e-tests",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/sensor-presence-collector/pull/828/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "schema-validate",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/sensor-presence-collector/pull/828/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000002",
+     "number": 96,
+     "title": "feat(scheduler): priority lanes for long-running import jobs",
+     "url": "https://github.com/acme/starfield/pull/96",
+     "isDraft": false,
+     "createdAt": "2026-08-26T19:11:26Z",
+     "updatedAt": "2026-08-26T21:04:40Z",
+     "additions": 1125,
+     "deletions": 90,
+     "changedFiles": 12,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": null,
+     "headRefName": "topic/change-96",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/starfield"
+     },
+     "author": {
+      "login": "octo-dev"
+     },
+     "comments": {
+      "totalCount": 2,
+      "nodes": [
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-08-26T19:14:31Z"
+       },
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-08-26T19:14:34Z"
+       }
+      ]
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": []
+     },
+     "latestReviews": {
+      "nodes": [
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "morgan-bell"
+        },
+        "submittedAt": "2026-08-26T20:26:18Z"
+       },
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "github-actions"
+        },
+        "submittedAt": "2026-08-26T21:04:37Z"
+       }
+      ]
+     },
+     "reviewThreads": {
+      "totalCount": 7,
+      "nodes": [
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 3
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 3
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       }
+      ]
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "4bc786243e4a1902f0270c3baa39fdba0faf9a19",
+         "author": {
+          "user": {
+           "login": "octo-dev"
+          }
+         },
+         "statusCheckRollup": {
+          "state": "FAILURE",
+          "contexts": {
+           "totalCount": 6,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "bundle-size",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/starfield/pull/96/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "build",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/starfield/pull/96/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "smoke-tests",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/starfield/pull/96/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "unit-tests",
+             "status": "COMPLETED",
+             "conclusion": "SKIPPED",
+             "detailsUrl": "https://github.com/acme/starfield/pull/96/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "integration-tests",
+             "status": "COMPLETED",
+             "conclusion": "FAILURE",
+             "detailsUrl": "https://github.com/acme/starfield/pull/96/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "deploy-preview",
+             "status": "COMPLETED",
+             "conclusion": "SKIPPED",
+             "detailsUrl": "https://github.com/acme/starfield/pull/96/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000003",
+     "number": 84,
+     "title": "Move connection pooling behind a configurable driver interface",
+     "url": "https://github.com/acme/starfield/pull/84",
+     "isDraft": true,
+     "createdAt": "2026-08-22T23:49:28Z",
+     "updatedAt": "2026-08-23T00:00:22Z",
+     "additions": 2339,
+     "deletions": 18,
+     "changedFiles": 23,
+     "mergeable": "CONFLICTING",
+     "reviewDecision": null,
+     "headRefName": "topic/change-84",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/starfield"
+     },
+     "author": {
+      "login": "octo-dev"
+     },
+     "comments": {
+      "totalCount": 2,
+      "nodes": [
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-08-22T23:52:29Z"
+       },
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-08-22T23:52:32Z"
+       }
+      ]
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": []
+     },
+     "latestReviews": {
+      "nodes": []
+     },
+     "reviewThreads": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "aa9979cfc568806b63fd406a2e26121ddf5313d5",
+         "author": {
+          "user": {
+           "login": "octo-dev"
+          }
+         },
+         "statusCheckRollup": {
+          "state": "SUCCESS",
+          "contexts": {
+           "totalCount": 3,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "bundle-size",
+             "status": "COMPLETED",
+             "conclusion": "SKIPPED",
+             "detailsUrl": "https://github.com/acme/starfield/pull/84/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "lint",
+             "status": "COMPLETED",
+             "conclusion": "SKIPPED",
+             "detailsUrl": "https://github.com/acme/starfield/pull/84/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "smoke-tests",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/starfield/pull/84/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000004",
+     "number": 25,
+     "title": "Fix off-by-one in the pagination cursor for archived",
+     "url": "https://github.com/acme/database-tooling/pull/25",
+     "isDraft": false,
+     "createdAt": "2026-07-09T19:40:15Z",
+     "updatedAt": "2026-07-09T19:49:35Z",
+     "additions": 655,
+     "deletions": 106,
+     "changedFiles": 28,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-25",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/database-tooling"
+     },
+     "author": {
+      "login": "octo-dev"
+     },
+     "comments": {
+      "totalCount": 1,
+      "nodes": [
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-07-09T19:40:28Z"
+       }
+      ]
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": []
+     },
+     "latestReviews": {
+      "nodes": []
+     },
+     "reviewThreads": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "6aba255b8b8b33068632c4d64e2066b34a4086c4",
+         "author": {
+          "user": {
+           "login": "octo-dev"
+          }
+         },
+         "statusCheckRollup": {
+          "state": "SUCCESS",
+          "contexts": {
+           "totalCount": 2,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "translations-check",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/database-tooling/pull/25/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "migrations-check",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/database-tooling/pull/25/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000005",
+     "number": 609,
+     "title": "chore: replace the hand-rolled cache with an LRU",
+     "url": "https://github.com/acme/agent-runtime/pull/609",
+     "isDraft": false,
+     "createdAt": "2026-07-04T02:41:42Z",
+     "updatedAt": "2026-07-06T21:12:45Z",
+     "additions": 95,
+     "deletions": 35,
+     "changedFiles": 3,
+     "mergeable": "CONFLICTING",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-609",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/agent-runtime"
+     },
+     "author": {
+      "login": "octo-dev"
+     },
+     "comments": {
+      "totalCount": 2,
+      "nodes": [
+       {
+        "author": {
+         "login": "code-review-bot"
+        },
+        "createdAt": "2026-07-04T02:41:52Z"
+       },
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-07-04T02:42:14Z"
+       }
+      ]
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": [
+       {
+        "requestedReviewer": {
+         "__typename": "Team",
+         "name": "Platform Maintainers"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "riley-fisher"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "toni-lange"
+        }
+       },
+       {
+        "requestedReviewer": {
+         "__typename": "User",
+         "login": "devin-osei"
+        }
+       }
+      ]
+     },
+     "latestReviews": {
+      "nodes": [
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "code-review-bot"
+        },
+        "submittedAt": "2026-07-04T02:42:34Z"
+       }
+      ]
+     },
+     "reviewThreads": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "910f6b40bd8fa0e644404befdb2005fff09f8122",
+         "author": {
+          "user": {
+           "login": "octo-dev"
+          }
+         },
+         "statusCheckRollup": {
+          "state": "SUCCESS",
+          "contexts": {
+           "totalCount": 10,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "load-test",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/609/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "accessibility",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/609/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "license-check",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/609/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "api-contract",
+             "status": "COMPLETED",
+             "conclusion": "SKIPPED",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/609/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "mutation-tests",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/609/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "config-lint",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/609/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "static-analysis",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/609/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "rollback-check",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/609/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "secrets-scan",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/609/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "sbom",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/agent-runtime/pull/609/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000006",
+     "number": 44,
+     "title": "Introduce structured logging across",
+     "url": "https://github.com/acme/starfield/pull/44",
+     "isDraft": false,
+     "createdAt": "2026-06-18T18:44:24Z",
+     "updatedAt": "2026-06-22T20:33:32Z",
+     "additions": 398,
+     "deletions": 0,
+     "changedFiles": 1,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": "CHANGES_REQUESTED",
+     "headRefName": "topic/change-44",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/starfield"
+     },
+     "author": {
+      "login": "octo-dev"
+     },
+     "comments": {
+      "totalCount": 4,
+      "nodes": [
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-06-18T18:45:59Z"
+       },
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-06-18T18:46:48Z"
+       },
+       {
+        "author": {
+         "login": "sam-tanaka"
+        },
+        "createdAt": "2026-06-18T19:47:15Z"
+       }
+      ]
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": []
+     },
+     "latestReviews": {
+      "nodes": [
+       {
+        "state": "CHANGES_REQUESTED",
+        "author": {
+         "login": "chris-doyle"
+        },
+        "submittedAt": "2026-06-18T19:49:13Z"
+       }
+      ]
+     },
+     "reviewThreads": {
+      "totalCount": 23,
+      "nodes": [
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 1
+        }
+       }
+      ]
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "8f6e1a00d366f7fb8afb872fb96a1c487ac09ebd",
+         "author": {
+          "user": {
+           "login": "octo-dev"
+          }
+         },
+         "statusCheckRollup": {
+          "state": "FAILURE",
+          "contexts": {
+           "totalCount": 3,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "lint",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/starfield/pull/44/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "smoke-tests",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/starfield/pull/44/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "dependency-audit",
+             "status": "COMPLETED",
+             "conclusion": "FAILURE",
+             "detailsUrl": "https://github.com/acme/starfield/pull/44/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000007",
+     "number": 9,
+     "title": "Split the",
+     "url": "https://github.com/acme/design-docs/pull/9",
+     "isDraft": false,
+     "createdAt": "2026-04-22T21:20:45Z",
+     "updatedAt": "2026-08-23T09:05:34Z",
+     "additions": 509,
+     "deletions": 0,
+     "changedFiles": 2,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": "REVIEW_REQUIRED",
+     "headRefName": "topic/change-9",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "acme/design-docs"
+     },
+     "author": {
+      "login": "octo-dev"
+     },
+     "comments": {
+      "totalCount": 16,
+      "nodes": [
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-08-04T09:51:33Z"
+       },
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-08-13T09:23:27Z"
+       },
+       {
+        "author": {
+         "login": "github-actions"
+        },
+        "createdAt": "2026-08-22T09:05:28Z"
+       }
+      ]
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": []
+     },
+     "latestReviews": {
+      "nodes": [
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "jordan-kim"
+        },
+        "submittedAt": "2026-06-05T17:19:10Z"
+       },
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "ravi-patel"
+        },
+        "submittedAt": "2026-04-23T16:55:46Z"
+       },
+       {
+        "state": "COMMENTED",
+        "author": {
+         "login": "toni-lange"
+        },
+        "submittedAt": "2026-04-23T13:26:40Z"
+       }
+      ]
+     },
+     "reviewThreads": {
+      "totalCount": 11,
+      "nodes": [
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 3
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 3
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": true,
+        "comments": {
+         "totalCount": 3
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 1
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 3
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 2
+        }
+       },
+       {
+        "isResolved": false,
+        "isOutdated": false,
+        "comments": {
+         "totalCount": 2
+        }
+       }
+      ]
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "c4abbe98432bf291cae82097238fd042dc1acda2",
+         "author": {
+          "user": {
+           "login": "octo-dev"
+          }
+         },
+         "statusCheckRollup": {
+          "state": "FAILURE",
+          "contexts": {
+           "totalCount": 2,
+           "nodes": [
+            {
+             "__typename": "CheckRun",
+             "name": "publish-image",
+             "status": "COMPLETED",
+             "conclusion": "FAILURE",
+             "detailsUrl": "https://github.com/acme/design-docs/pull/9/checks"
+            },
+            {
+             "__typename": "CheckRun",
+             "name": "dead-code",
+             "status": "COMPLETED",
+             "conclusion": "SUCCESS",
+             "detailsUrl": "https://github.com/acme/design-docs/pull/9/checks"
+            }
+           ]
+          }
+         }
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000008",
+     "number": 1,
+     "title": "Guard the bulk delete",
+     "url": "https://github.com/octo-dev/sample-service/pull/1",
+     "isDraft": false,
+     "createdAt": "2025-11-12T23:45:01Z",
+     "updatedAt": "2025-11-13T00:06:53Z",
+     "additions": 241,
+     "deletions": 59,
+     "changedFiles": 12,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": null,
+     "headRefName": "topic/change-1",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "octo-dev/sample-service"
+     },
+     "author": {
+      "login": "octo-dev"
+     },
+     "comments": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": []
+     },
+     "latestReviews": {
+      "nodes": []
+     },
+     "reviewThreads": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "33953c7ee9c45358df4a1f21569c52e1f12c3c5d",
+         "author": {
+          "user": {
+           "login": "octo-dev"
+          }
+         },
+         "statusCheckRollup": null
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000009",
+     "number": 4,
+     "title": "perf: batch",
+     "url": "https://github.com/octo-dev/dashboard/pull/4",
+     "isDraft": false,
+     "createdAt": "2025-06-15T03:33:13Z",
+     "updatedAt": "2025-06-15T04:06:32Z",
+     "additions": 5062,
+     "deletions": 29,
+     "changedFiles": 46,
+     "mergeable": "CONFLICTING",
+     "reviewDecision": null,
+     "headRefName": "topic/change-4",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "octo-dev/dashboard"
+     },
+     "author": {
+      "login": "octo-dev"
+     },
+     "comments": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": []
+     },
+     "latestReviews": {
+      "nodes": []
+     },
+     "reviewThreads": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "8127e5b2018046c23f5c7e3b5b1f4835e7a9eb61",
+         "author": {
+          "user": {
+           "login": "octo-dev"
+          }
+         },
+         "statusCheckRollup": null
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000010",
+     "number": 2,
+     "title": "Document the",
+     "url": "https://github.com/octo-dev/sketchpad-cli/pull/2",
+     "isDraft": false,
+     "createdAt": "2024-06-19T00:28:16Z",
+     "updatedAt": "2024-06-19T18:36:52Z",
+     "additions": 208,
+     "deletions": 2,
+     "changedFiles": 5,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": null,
+     "headRefName": "topic/change-2",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "octo-dev/sketchpad-cli"
+     },
+     "author": {
+      "login": "octo-dev"
+     },
+     "comments": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": []
+     },
+     "latestReviews": {
+      "nodes": []
+     },
+     "reviewThreads": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "26defe95ace38f131cb62a3136efda3d562fbcc5",
+         "author": {
+          "user": {
+           "login": "octo-dev"
+          }
+         },
+         "statusCheckRollup": null
+        }
+       }
+      ]
+     }
+    },
+    {
+     "__typename": "PullRequest",
+     "id": "PR_test000000000011",
+     "number": 15,
+     "title": "Teach the",
+     "url": "https://github.com/octo-dev/sketchpad/pull/15",
+     "isDraft": false,
+     "createdAt": "2024-06-17T03:07:31Z",
+     "updatedAt": "2024-09-06T23:43:21Z",
+     "additions": 35,
+     "deletions": 6,
+     "changedFiles": 6,
+     "mergeable": "MERGEABLE",
+     "reviewDecision": null,
+     "headRefName": "topic/change-15",
+     "baseRefName": "main",
+     "repository": {
+      "nameWithOwner": "octo-dev/sketchpad"
+     },
+     "author": {
+      "login": "octo-dev"
+     },
+     "comments": {
+      "totalCount": 2,
+      "nodes": [
+       {
+        "author": {
+         "login": "octo-dev"
+        },
+        "createdAt": "2024-09-06T23:42:41Z"
+       },
+       {
+        "author": {
+         "login": "assistant-bot"
+        },
+        "createdAt": "2024-09-06T23:43:20Z"
+       }
+      ]
+     },
+     "labels": {
+      "nodes": []
+     },
+     "reviewRequests": {
+      "nodes": []
+     },
+     "latestReviews": {
+      "nodes": []
+     },
+     "reviewThreads": {
+      "totalCount": 0,
+      "nodes": []
+     },
+     "commits": {
+      "nodes": [
+       {
+        "commit": {
+         "oid": "65ddc2b282115225d6c3ae1b8edca11fbf0edbb9",
+         "author": {
+          "user": {
+           "login": "octo-dev"
+          }
+         },
+         "statusCheckRollup": null
+        }
+       }
+      ]
+     }
+    }
+   ]
+  }
+ }
+}
