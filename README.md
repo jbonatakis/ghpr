@@ -73,15 +73,15 @@ ghpr -once                            # plain-text snapshot, no TUI
 | `z` | fold or unfold every repo |
 | `t` | toggle grouping by repo |
 | `e` | activity feed: show it, again to step into it, again to hide it |
-| `esc` | leave the activity feed (or cancel the filter) |
 | `s` | cycle sort: attention → updated → oldest → comments → diff size |
 | `m` | cycle mode: authored → review-requested → involved |
 | `D` | show or hide drafts |
 | `O` | choose which organizations appear |
 | `/` | filter the list — or the activity feed, when the feed has the keys |
 | `r` | refresh now |
+| `esc` | back out — the feed's filter, then the feed, then the list's filter |
 | `?` | help |
-| `q` | quit |
+| `q` | quit (`ctrl+c` too; `esc` never quits) |
 
 ## Organizations
 

@@ -51,9 +51,9 @@ var keys = keyMap{
 	Peek:     key.NewBinding(key.WithKeys("H"), key.WithHelp("H", "show hidden")),
 	Filter:   key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "filter")),
 	Events:   key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "activity: show, scroll, hide")),
-	Leave:    key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back to the list")),
+	Leave:    key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back out / cancel")),
 	Help:     key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
-	Quit:     key.NewBinding(key.WithKeys("q", "ctrl+c", "esc"), key.WithHelp("q", "quit")),
+	Quit:     key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),
 }
 
 // shortHelp is the footer hint line.

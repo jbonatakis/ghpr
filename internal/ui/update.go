@@ -60,7 +60,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	if m.showHelp {
 		// Any key dismisses help except an explicit quit.
-		if key.Matches(msg, keys.Quit) && msg.String() != "esc" {
+		if key.Matches(msg, keys.Quit) {
 			return m, tea.Quit
 		}
 		m.showHelp = false
@@ -211,6 +211,17 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.clampScroll()
 
+	case key.Matches(msg, keys.Leave):
+		// esc backs out of whatever is narrowing the view, and does nothing
+		// when nothing is. It is emphatically not a quit: q and ctrl+c do
+		// that, and the key people press to cancel something should never be
+		// the one that closes the dashboard.
+		if m.filter.Value() != "" {
+			m.filter.Reset()
+			m.rebuildKeepCursor()
+			m.setToast("filter cleared")
+		}
+
 	case key.Matches(msg, keys.Filter):
 		m.filtering = true
 		return m, m.filter.Focus()
@@ -227,8 +238,8 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // the feed's to answer; anything it declines falls through to the dashboard,
 // so refreshing, the help overlay and quitting all still work from inside.
 func (m Model) handleEventKey(msg tea.KeyMsg) (Model, tea.Cmd, bool) {
-	// Checked ahead of the bindings because esc is also bound to quit, and in
-	// here it means the far less drastic "give the list its keys back".
+	// Checked ahead of the bindings so that the feed's own meaning for esc —
+	// give the list its keys back — wins over anything further out.
 	if msg.String() == "esc" {
 		m.leaveEvents()
 		return m, nil, true

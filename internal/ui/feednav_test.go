@@ -213,7 +213,7 @@ func TestTheFeedSaysWhereYouAreInIt(t *testing.T) {
 func TestTheFooterExplainsTheFeedKeys(t *testing.T) {
 	m := inFeed(t, 30)
 	out := ansi.Strip(m.View())
-	if !strings.Contains(out, "back to the list") {
+	if !strings.Contains(out, "back out / cancel") {
 		t.Errorf("the footer should say how to get out of the feed:\n%s", out)
 	}
 }
@@ -300,7 +300,7 @@ func TestTheFeedHintsFitANarrowTerminal(t *testing.T) {
 		m := newLoaded(t, w, 30)
 		m.events = backlog(30)
 		m = press(press(m, 'e'), 'e')
-		if out := ansi.Strip(m.View()); !strings.Contains(out, "esc back to the list") {
+		if out := ansi.Strip(m.View()); !strings.Contains(out, "esc back out / cancel") {
 			t.Errorf("width %d: the way out was truncated away:\n%s", w, lastLine(out))
 		}
 	}
