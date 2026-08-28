@@ -148,9 +148,25 @@ type PR struct {
 	LastReviewAt  time.Time
 	PushedBy      string
 
+	// The most recent @mention of the viewer that the query can see, and who
+	// wrote it. Only the sources the search already pays for are scanned: the
+	// description, the last few conversation comments and each reviewer's
+	// latest review body. A mention buried in an older comment, or inside a
+	// review thread, is not visible here.
+	LastMentionBy string
+	LastMentionAt time.Time
+
 	Labels    []Label
 	Reviewers []Reviewer
-	Checks    []Check
+
+	// ReviewRequests is the raw set of outstanding review requests, kept apart
+	// from Reviewers because the two answer different questions. Reviewers is
+	// a merged view for display, where a review already given hides a later
+	// re-request from the same person; ReviewRequests is what "you were asked
+	// to review this" has to be read from, re-requests included.
+	ReviewRequests []Reviewer
+
+	Checks []Check
 
 	ChecksState   CheckState
 	ChecksPassed  int
@@ -204,6 +220,21 @@ func (p PR) Status() Status {
 		return StatusUnresolved
 	}
 	return StatusAwaitingReview
+}
+
+// ReviewRequestedFrom reports whether a review is currently being asked of
+// this person. Team requests are excluded: knowing the team was asked says
+// nothing about whether this particular person is on it.
+func (p PR) ReviewRequestedFrom(login string) bool {
+	if login == "" {
+		return false
+	}
+	for _, r := range p.ReviewRequests {
+		if !r.Team && strings.EqualFold(r.Login, login) {
+			return true
+		}
+	}
+	return false
 }
 
 // PendingReviewers are people whose review was requested but not yet given.

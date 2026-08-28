@@ -132,6 +132,12 @@ func eventStyle(k gh.EventKind) lipgloss.Style {
 		return stRed
 	case gh.EventPush:
 		return stBlue
+	case gh.EventReviewRequested:
+		// Bold, like an arrival: both are the feed saying this one wants you.
+		return lipgloss.NewStyle().Foreground(colBlue).Bold(true)
+	case gh.EventMention:
+		// A louder comment, because that is what it is.
+		return lipgloss.NewStyle().Foreground(colYellow).Bold(true)
 	}
 	return stMuted
 }

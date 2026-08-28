@@ -70,7 +70,8 @@ ghpr -once                            # plain-text snapshot, no TUI
 | `H` | show hidden items so you can unhide them |
 | `z` | fold or unfold every repo |
 | `t` | toggle grouping by repo |
-| `e` | toggle the activity feed |
+| `e` | activity feed: show it, again to step into it, again to hide it |
+| `esc` | leave the activity feed (or cancel the filter) |
 | `s` | cycle sort: attention → updated → oldest → comments → diff size |
 | `m` | cycle mode: authored → review-requested → involved |
 | `D` | show or hide drafts |
@@ -195,6 +196,8 @@ recorded in the activity feed (`e`), which names who did it:
  11:47:04  design-docs#9                                   + opened               octo-dev
  11:47:04  retention-policy-enforcer-export-history#99     ★ approved             priya-shah
  11:47:04  starfield#96                                    ↑ new commits          octo-dev
+ 11:47:04  starfield#96                                    @ mentioned you        priya-shah
+ 11:47:04  starfield#84                                    ◷ review requested
  11:47:04  sensor-presence-collector#828                   ~ checks passing
  11:47:04  sensor-presence-collector#828                   » 1 new comment        morgan-bell
 ```
@@ -210,6 +213,67 @@ inside a review thread carries no author in the cheap form of the query, so it
 is attributed to the review that delivered it — and left blank rather than
 guessed if even that is unavailable. All of this costs nothing extra: the query
 is still 2 rate-limit points.
+
+### Things aimed at you
+
+Two lines are in the feed because of who the change is *for* rather than what it
+is, and both cost nothing extra — they read fields the query was already paying
+for, so it is still 2 rate-limit points.
+
+**`◷ review requested`** — you were added as a reviewer on a pull request that
+was already on screen. The actor column is left empty because GitHub will not
+say who asked without a second, costlier query, and a guess is worse than a
+blank. A re-request after you have already reviewed counts, which is the case
+the review column alone hides: it keeps showing your `✓` while the request sits
+underneath it. Requests aimed at a *team* are not read as yours — knowing the
+team was asked says nothing about whether you are on it. In `review-requested`
+mode this line does not appear, because being asked is what puts the pull
+request in the list at all, and it arrives as `→ review requested` instead.
+
+**`@ mentioned you`** — someone wrote your handle. `ghpr` scans the text it
+already fetches: the description, the last three conversation comments, and each
+reviewer's most recent review body. That covers the ordinary "@you can you look
+at this" and nothing more — a mention buried in an older comment, or inside a
+review thread, is not visible without asking GitHub for far more text than the
+dashboard is worth. `@you-and-someone-else` and `@org/your-team` are not you,
+and neither is `notify@you.example`. Quoting your own handle does not ping you.
+
+A mention takes the place of the `» N new comments` line rather than sitting
+next to it: two rows a second apart on the same pull request would say one thing
+twice, and the quieter of the two would be the one left underneath. A mention
+inside a *review* keeps the verdict, though — `★ changes requested` and
+`@ mentioned you` are two different facts.
+
+A description that names you is dated by when the pull request was opened, not
+by when it was last touched. Dating it by the update time would re-announce the
+same standing mention on every push and every comment for the life of the branch.
+
+### Reading back through the feed
+
+`e` has three stops: show the feed, step into it, put it away. The middle one is
+the new part — the pane brightens, picks up a position counter, and takes the
+navigation keys:
+
+```
+────────── activity  4/38 ─────────────────────────────────────────────────────
+ 10:36:10  starfield#130                                   → review requested     sam-okafor
+ 10:35:33  design-docs#9                                   ✔ merged
+ 10:34:56  starfield#84                                    ! now conflicting
+▸10:34:19  starfield#84                                    » 3 new comments       riley-shaw
+```
+
+`↑`/`↓` scroll, `pgup`/`pgdn` page, `g` and `G` jump to the newest and oldest,
+`enter` opens the pull request the selected line names, `y` copies its URL, and
+`esc` hands the keys back to the list. The newest event is at the top, so `g`
+and `G` run with the screen rather than with the clock.
+
+Opening the feed without stepping into it leaves the list keys alone, so
+watching activity go by while working the list still behaves as it always did.
+
+A poll that lands while you are reading does not move the line you are on: the
+feed only follows along live while the cursor is at the top, which is where a
+feed nobody is reading sits. Leaving with `esc` returns it to the live view.
+The backlog holds the last 500 events of the session.
 
 The pull request number is never the part that gets truncated; long repository
 names are shortened around it.

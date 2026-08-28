@@ -138,7 +138,7 @@ func (c *Client) Fetch(ctx context.Context, search string, max int) (Result, err
 			if n.Typename != "PullRequest" {
 				continue
 			}
-			res.PRs = append(res.PRs, convert(n))
+			res.PRs = append(res.PRs, convert(n, res.Viewer))
 		}
 		if !out.Data.Search.PageInfo.HasNextPage || out.Data.Search.PageInfo.EndCursor == "" {
 			res.Complete = true
@@ -204,8 +204,10 @@ func parseTime(s string) time.Time {
 	return t
 }
 
-// convert flattens a GraphQL node into the normalized PR model.
-func convert(n prNode) PR {
+// convert flattens a GraphQL node into the normalized PR model. The viewer's
+// login is needed to spot @mentions of them as the bodies go past; it is the
+// only thing here that depends on who is looking.
+func convert(n prNode, viewer string) PR {
 	p := PR{
 		ID:             n.ID,
 		Repo:           n.Repository.NameWithOwner,
@@ -269,12 +271,19 @@ func convert(n prNode) PR {
 		if login == "" {
 			login, team = rr.Name, true
 		}
-		if login == "" || seen[login] {
+		if login == "" {
+			continue
+		}
+		// Recorded before the dedupe below, because a request that follows a
+		// review from the same person is exactly the case Reviewers hides.
+		p.ReviewRequests = append(p.ReviewRequests, Reviewer{Login: login, State: "PENDING", Team: team})
+		if seen[login] {
 			continue
 		}
 		seen[login] = true
 		p.Reviewers = append(p.Reviewers, Reviewer{Login: login, State: "PENDING", Team: team})
 	}
+	noteMentions(&p, n, viewer)
 
 	if len(n.Commits.Nodes) > 0 {
 		p.HeadOID = n.Commits.Nodes[0].Commit.OID
@@ -305,6 +314,38 @@ func convert(n prNode) PR {
 		}
 	}
 	return p
+}
+
+// noteMentions records the most recent @mention of the viewer among the text
+// this query already carries.
+//
+// The description is dated by the pull request's creation rather than its last
+// update, deliberately. Dating it by UpdatedAt would re-announce a standing
+// mention in the description on every push and every comment, because that
+// timestamp moves whenever anything at all happens.
+//
+// Mentions the viewer wrote themselves are skipped: quoting your own handle,
+// or being quoted back, is not someone asking for you.
+func noteMentions(p *PR, n prNode, viewer string) {
+	if viewer == "" {
+		return
+	}
+	note := func(who string, at time.Time, text string) {
+		if who == "" || strings.EqualFold(who, viewer) || at.IsZero() {
+			return
+		}
+		if at.After(p.LastMentionAt) && Mentions(text, viewer) {
+			p.LastMentionAt, p.LastMentionBy = at, who
+		}
+	}
+
+	note(p.Author, p.CreatedAt, n.BodyText)
+	for _, c := range n.Comments.Nodes {
+		note(c.Author.Login, parseTime(c.CreatedAt), c.BodyText)
+	}
+	for _, r := range n.LatestReviews.Nodes {
+		note(r.Author.Login, parseTime(r.SubmittedAt), r.BodyText)
+	}
 }
 
 // checkRunState collapses a CheckRun's status+conclusion pair.

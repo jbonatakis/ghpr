@@ -207,11 +207,11 @@ func TestRealEventTextsAreNotTruncated(t *testing.T) {
 		"opened", "review requested", "now involves you", "now listed",
 		"merged", "closed", "approved", "changes requested", "review dismissed",
 		"ready for review", "now conflicting", "new commits",
-		"1 new comment", "999 new comments",
+		"1 new comment", "999 new comments", "mentioned you",
 		"checks passing", "checks failing", "checks running", "checks no checks",
 	}
 	for _, text := range texts {
-		for _, icon := range []string{"+", "→", "✔", "×", "»", "~", "★", "▲", "!", "↑"} {
+		for _, icon := range []string{"+", "→", "✔", "×", "»", "~", "★", "▲", "!", "↑", "◷", "@"} {
 			cell := pad(icon+" "+text, evWhatWidth)
 			if strings.Contains(cell, "…") {
 				t.Errorf("%q with icon %q does not fit in %d cells: %q",

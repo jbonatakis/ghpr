@@ -15,6 +15,8 @@ const (
 	detailHeight = 11
 	eventsHeight = 9
 	minList      = 3
+	// eventRows is how many activity lines fit under the pane's title bar.
+	eventRows = eventsHeight - 1
 )
 
 // column widths for the PR table, excluding the flexible title.

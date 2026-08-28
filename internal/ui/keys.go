@@ -24,6 +24,7 @@ type keyMap struct {
 	Peek     key.Binding
 	Filter   key.Binding
 	Events   key.Binding
+	Leave    key.Binding
 	Help     key.Binding
 	Quit     key.Binding
 }
@@ -49,7 +50,8 @@ var keys = keyMap{
 	Hide:     key.NewBinding(key.WithKeys("h"), key.WithHelp("h", "hide / unhide")),
 	Peek:     key.NewBinding(key.WithKeys("H"), key.WithHelp("H", "show hidden")),
 	Filter:   key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "filter")),
-	Events:   key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "activity")),
+	Events:   key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "activity: show, scroll, hide")),
+	Leave:    key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back to the list")),
 	Help:     key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 	Quit:     key.NewBinding(key.WithKeys("q", "ctrl+c", "esc"), key.WithHelp("q", "quit")),
 }
@@ -59,11 +61,19 @@ var shortHelp = []key.Binding{
 	keys.Up, keys.Down, keys.Open, keys.Detail, keys.Hide, keys.Filter, keys.Sort, keys.Refresh, keys.Help, keys.Quit,
 }
 
+// feedHelp replaces the footer hints while the activity feed has the keys,
+// because half of the usual ones mean something different in there.
+// Paging and the g/G jumps are left to the ? overlay so this line still fits
+// on a narrow terminal, where being told how to get out matters most.
+var feedHelp = []key.Binding{
+	keys.Up, keys.Down, keys.Open, keys.Copy, keys.Leave, keys.Help,
+}
+
 // fullHelp is the ? overlay, laid out in columns.
 var fullHelp = [][]key.Binding{
 	{keys.Up, keys.Down, keys.PageUp, keys.PageDown, keys.Home, keys.End},
 	{keys.Open, keys.Copy, keys.Detail, keys.Fold, keys.FoldAll, keys.Group},
 	{keys.Hide, keys.Peek, keys.Drafts, keys.Orgs},
-	{keys.Sort, keys.Mode, keys.Filter, keys.Events},
+	{keys.Sort, keys.Mode, keys.Filter, keys.Events, keys.Leave},
 	{keys.Refresh, keys.Help, keys.Quit},
 }

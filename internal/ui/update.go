@@ -45,6 +45,17 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	// While the activity feed has the keys it takes the navigation ones, so
+	// reading back through history does not drag the pull request list along
+	// with it. Everything it does not claim still works from in there.
+	if m.eventsFocus {
+		if _, shown := m.panes(); !shown {
+			m.leaveEvents() // the pane no longer fits; there is nothing to steer
+		} else if next, cmd, handled := m.handleEventKey(msg); handled {
+			return next, cmd
+		}
+	}
+
 	switch {
 	case key.Matches(msg, keys.Quit):
 		return m, tea.Quit
@@ -159,7 +170,23 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.savePrefs()
 
 	case key.Matches(msg, keys.Events):
-		m.showEvents = !m.showEvents
+		// One key, three stops: show the feed, step into it, put it away.
+		// Opening it unfocused keeps the old behaviour intact for anyone who
+		// only ever wanted to watch activity go by while working the list.
+		_, shown := m.panes()
+		switch {
+		case !m.showEvents:
+			m.showEvents = true
+		case !m.eventsFocus && shown:
+			// No toast here: it would sit on top of the footer hints that have
+			// just changed to explain what the keys now do.
+			m.eventsFocus = true
+			m.eventCursor, m.eventTop = 0, 0
+			m.clampEvents()
+		default:
+			m.showEvents = false
+			m.leaveEvents()
+		}
 		m.clampScroll()
 
 	case key.Matches(msg, keys.Filter):
@@ -172,6 +199,52 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+// handleEventKey steers the activity feed. The bool says whether the key was
+// the feed's to answer; anything it declines falls through to the dashboard,
+// so refreshing, the help overlay and quitting all still work from inside.
+func (m Model) handleEventKey(msg tea.KeyMsg) (Model, tea.Cmd, bool) {
+	// Checked ahead of the bindings because esc is also bound to quit, and in
+	// here it means the far less drastic "give the list its keys back".
+	if msg.String() == "esc" {
+		m.leaveEvents()
+		return m, nil, true
+	}
+
+	switch {
+	case key.Matches(msg, keys.Up):
+		m.moveEvent(-1)
+	case key.Matches(msg, keys.Down):
+		m.moveEvent(1)
+	case key.Matches(msg, keys.PageUp):
+		m.moveEvent(-eventRows)
+	case key.Matches(msg, keys.PageDown):
+		m.moveEvent(eventRows)
+	case key.Matches(msg, keys.Home):
+		// The newest event is at the top, so g and G run with the screen
+		// rather than with the clock.
+		m.moveEvent(-len(m.events))
+	case key.Matches(msg, keys.End):
+		m.moveEvent(len(m.events))
+
+	case key.Matches(msg, keys.Open):
+		if e := m.selectedEvent(); e != nil && e.URL != "" {
+			return m, openURL(e.URL), true
+		}
+	case key.Matches(msg, keys.Copy):
+		if e := m.selectedEvent(); e != nil && e.URL != "" {
+			if err := clipboard.WriteAll(e.URL); err != nil {
+				m.setToast("clipboard unavailable")
+			} else {
+				m.setToast("copied " + e.Key)
+			}
+		}
+
+	default:
+		return m, nil, false
+	}
+	return m, nil, true
 }
 
 func (m *Model) currentRow() *row {

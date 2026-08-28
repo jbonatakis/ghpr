@@ -15,6 +15,7 @@ query($q: String!, $n: Int!, $after: String) {
         title
         url
         isDraft
+        bodyText
         createdAt
         updatedAt
         additions
@@ -26,7 +27,7 @@ query($q: String!, $n: Int!, $after: String) {
         baseRefName
         repository { nameWithOwner }
         author { login }
-        comments(last: 3) { totalCount nodes { author { login } createdAt } }
+        comments(last: 3) { totalCount nodes { author { login } createdAt bodyText } }
         labels(first: 10) { nodes { name color } }
         reviewRequests(first: 20) {
           nodes {
@@ -37,7 +38,7 @@ query($q: String!, $n: Int!, $after: String) {
             }
           }
         }
-        latestReviews(first: 20) { nodes { state author { login } submittedAt } }
+        latestReviews(first: 20) { nodes { state author { login } submittedAt bodyText } }
         reviewThreads(first: 50) {
           totalCount
           nodes { isResolved isOutdated comments { totalCount } }
@@ -100,6 +101,7 @@ type prNode struct {
 	Title        string `json:"title"`
 	URL          string `json:"url"`
 	IsDraft      bool   `json:"isDraft"`
+	BodyText     string `json:"bodyText"`
 	CreatedAt    string `json:"createdAt"`
 	UpdatedAt    string `json:"updatedAt"`
 	Additions    int    `json:"additions"`
@@ -124,6 +126,7 @@ type prNode struct {
 				Login string `json:"login"`
 			} `json:"author"`
 			CreatedAt string `json:"createdAt"`
+			BodyText  string `json:"bodyText"`
 		} `json:"nodes"`
 	} `json:"comments"`
 	Labels struct {
@@ -148,6 +151,7 @@ type prNode struct {
 				Login string `json:"login"`
 			} `json:"author"`
 			SubmittedAt string `json:"submittedAt"`
+			BodyText    string `json:"bodyText"`
 		} `json:"nodes"`
 	} `json:"latestReviews"`
 	ReviewThreads struct {

@@ -19,6 +19,8 @@ const (
 	EventReadyForReview
 	EventConflict
 	EventPush
+	EventReviewRequested
+	EventMention
 )
 
 func (k EventKind) Icon() string {
@@ -43,6 +45,10 @@ func (k EventKind) Icon() string {
 		return "!"
 	case EventPush:
 		return "↑"
+	case EventReviewRequested:
+		return "◷"
+	case EventMention:
+		return "@"
 	}
 	return "."
 }
@@ -100,6 +106,12 @@ type DiffOpts struct {
 	// Mode phrases an arrival: entering a review-requested search means the
 	// viewer has been asked to review something.
 	Mode Mode
+
+	// Viewer is the logged-in user. Two kinds of change are only interesting
+	// because of who they are aimed at — a review asked of you, and a comment
+	// that says your name — and without a login neither can be told apart from
+	// the same thing happening to somebody else.
+	Viewer string
 }
 
 // arrivalText describes a pull request entering the watched set.
@@ -160,8 +172,21 @@ func Diff(prev, next []PR, opts DiffOpts) []Event {
 			// Anything else merely surfaced in our view; that is not activity.
 			continue
 		}
-		if n := p.Comments() - o.Comments(); n > 0 {
+		// A mention is a comment that named you, so it stands in for the
+		// comment line rather than joining it: two rows at the same second on
+		// the same pull request would say one thing twice, and the quieter of
+		// the two would be the one left underneath.
+		mentioned := opts.Viewer != "" && p.LastMentionAt.After(o.LastMentionAt)
+		if n := p.Comments() - o.Comments(); n > 0 && !mentioned {
 			add(p, EventComment, commentActor(o, p), "%s", plural(n, "new comment", "new comments"))
+		}
+		if mentioned {
+			add(p, EventMention, p.LastMentionBy, "mentioned you")
+		}
+		if !o.ReviewRequestedFrom(opts.Viewer) && p.ReviewRequestedFrom(opts.Viewer) {
+			// GitHub does not say who asked without a second, costlier query,
+			// so the actor column is left empty rather than guessed at.
+			add(p, EventReviewRequested, "", "review requested")
 		}
 		if p.ChecksState != o.ChecksState {
 			add(p, EventChecks, "", "checks %s", p.ChecksState)

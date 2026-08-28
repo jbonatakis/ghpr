@@ -18,8 +18,10 @@ import (
 // freshFor is how long a PR stays highlighted after we notice it changed.
 const freshFor = 60 * time.Second
 
-// maxEvents caps the activity feed's backlog.
-const maxEvents = 200
+// maxEvents caps the activity feed's backlog. It is generous because the feed
+// can be scrolled: the cap is there to bound memory over a dashboard left open
+// for days, not to decide how far back the user is allowed to look.
+const maxEvents = 500
 
 type sortMode int
 
@@ -129,6 +131,14 @@ type Model struct {
 	showDetail bool
 	showEvents bool
 	showHelp   bool
+
+	// Activity feed navigation. eventCursor and eventTop count backwards from
+	// the newest event, matching the order the pane draws them in: 0 is the
+	// line at the top. They only mean anything while eventsFocus is set —
+	// leaving the feed returns it to the live view.
+	eventsFocus bool
+	eventCursor int
+	eventTop    int
 
 	// absent tracks pull requests that dropped out of the search but have not
 	// been accounted for. They stay on screen and are looked up directly, so a
@@ -421,6 +431,7 @@ func (m Model) applyFetch(msg fetchDoneMsg) (tea.Model, tea.Cmd) {
 		Now:          msg.res.FetchedAt,
 		PrevComplete: m.lastComplete,
 		Mode:         m.cfg.Mode,
+		Viewer:       msg.res.Viewer,
 	})
 	m.record(events, msg.res.FetchedAt)
 
@@ -563,6 +574,65 @@ func (m *Model) record(events []gh.Event, at time.Time) {
 	if len(m.events) > maxEvents {
 		m.events = m.events[len(m.events)-maxEvents:]
 	}
+	// Reading back through the feed should not be interrupted by the poll that
+	// lands mid-sentence. Because positions are counted from the newest end,
+	// staying on the same event means stepping the same distance further back.
+	// A cursor already at the top is left there, so an unattended feed still
+	// follows along live.
+	if m.eventsFocus && m.eventCursor > 0 {
+		m.eventCursor += len(events)
+		m.eventTop += len(events)
+	}
+	m.clampEvents()
+}
+
+// clampEvents keeps the feed cursor and its window inside the backlog.
+func (m *Model) clampEvents() {
+	h := eventRows
+	if m.eventCursor < 0 {
+		m.eventCursor = 0
+	}
+	if m.eventCursor >= len(m.events) {
+		m.eventCursor = max(0, len(m.events)-1)
+	}
+	if m.eventCursor < m.eventTop {
+		m.eventTop = m.eventCursor
+	}
+	if m.eventCursor >= m.eventTop+h {
+		m.eventTop = m.eventCursor - h + 1
+	}
+	if maxTop := max(0, len(m.events)-h); m.eventTop > maxTop {
+		m.eventTop = maxTop
+	}
+	if m.eventTop < 0 {
+		m.eventTop = 0
+	}
+}
+
+// moveEvent walks the feed cursor; positive is further back in time, which is
+// downwards on screen because the newest event is drawn at the top.
+func (m *Model) moveEvent(delta int) {
+	if len(m.events) == 0 {
+		return
+	}
+	m.eventCursor += delta
+	m.clampEvents()
+}
+
+// selectedEvent is the feed line under the cursor, or nil when the feed is
+// empty or not being navigated.
+func (m *Model) selectedEvent() *gh.Event {
+	if !m.eventsFocus || m.eventCursor < 0 || m.eventCursor >= len(m.events) {
+		return nil
+	}
+	return &m.events[len(m.events)-1-m.eventCursor]
+}
+
+// leaveEvents drops out of the feed and returns it to the live view, so the
+// pane never sits frozen on old activity once it stops being read.
+func (m *Model) leaveEvents() {
+	m.eventsFocus = false
+	m.eventCursor, m.eventTop = 0, 0
 }
 
 func (m *Model) selectedKey() string {

@@ -149,30 +149,25 @@ func labelStyle(l gh.Label) lipgloss.Style {
 }
 
 // eventsView is the rolling feed of everything that changed while open.
+//
+// The newest event is drawn at the top, so on-screen "up" moves towards the
+// present and "down" reads back into history.
 func (m Model) eventsView() string {
 	var b strings.Builder
-	b.WriteString(stDivider.Render(strings.Repeat("─", max(0, min(m.width, 10)))))
-	b.WriteString(stFaint.Render(" activity "))
-	rest := m.width - 10 - len(" activity ")
-	if rest > 0 {
-		b.WriteString(stDivider.Render(strings.Repeat("─", rest)))
-	}
+	b.WriteString(m.eventsTitle())
 	b.WriteString("\n")
 
-	rows := eventsHeight - 1
 	// Deliberately the whole log: activity is a session-wide record, not a
 	// view of the current mode. Switching mode or hiding a pull request does
 	// not un-happen what it did.
 	if len(m.events) == 0 {
 		b.WriteString(" " + stMuted.Render("watching for changes…") + "\n")
-		for i := 2; i <= rows; i++ {
+		for i := 2; i <= eventRows; i++ {
 			b.WriteString("\n")
 		}
 		return b.String()
 	}
 
-	start := max(0, len(m.events)-rows)
-	shown := m.events[start:]
 	refWidth := eventRefWidth(m.width)
 	// The actor sits in its own column so a run of activity can be scanned by
 	// who caused it, not just by what happened.
@@ -181,25 +176,73 @@ func (m Model) eventsView() string {
 		actorWidth = evActorWidth
 	}
 
-	for i := len(shown) - 1; i >= 0; i-- {
-		e := shown[i]
-		ts := stFaint.Render(e.At.Local().Format("15:04:05"))
-		// Padded after linking: the escape sequence has no width, so the cell
-		// must be measured with visibleWidth.
-		refText := link(m.cfg.Links, e.URL, eventRefText(shortRepo(e.Repo), e.Number, refWidth))
-		ref := stMuted.Render(padVisible(refText, refWidth))
-		what := eventStyle(e.Kind).Render(pad(e.Kind.Icon()+" "+e.Text, evWhatWidth))
-
-		line := fmt.Sprintf(" %s  %s  %s", ts, ref, what)
-		if actorWidth > 0 && e.Actor != "" {
-			line += "  " + stActor.Render(pad(e.Actor, actorWidth))
-		}
-		b.WriteString(truncateToWidth(strings.TrimRight(line, " "), m.width) + "\n")
+	drawn := 0
+	for d := m.eventTop; d < m.eventTop+eventRows && d < len(m.events); d++ {
+		e := m.events[len(m.events)-1-d]
+		b.WriteString(m.renderEventRow(e, m.eventsFocus && d == m.eventCursor, refWidth, actorWidth))
+		b.WriteString("\n")
+		drawn++
 	}
-	for i := len(shown); i < rows; i++ {
+	for i := drawn; i < eventRows; i++ {
 		b.WriteString("\n")
 	}
 	return b.String()
+}
+
+// eventsTitle is the pane's divider bar. While the feed has the keys it says
+// so — brightened, and carrying the position, which is the only way to tell a
+// feed scrolled back through history from one that has simply gone quiet.
+func (m Model) eventsTitle() string {
+	const label = " activity "
+	style := stFaint
+	if m.eventsFocus {
+		style = stTitle
+	}
+	position := ""
+	if m.eventsFocus && len(m.events) > 0 {
+		position = fmt.Sprintf(" %d/%d ", m.eventCursor+1, len(m.events))
+	}
+
+	lead := max(0, min(m.width, 10))
+	var b strings.Builder
+	b.WriteString(stDivider.Render(strings.Repeat("─", lead)))
+	b.WriteString(style.Render(label))
+	b.WriteString(stMuted.Render(position))
+	if rest := m.width - lead - len(label) - len(position); rest > 0 {
+		b.WriteString(stDivider.Render(strings.Repeat("─", rest)))
+	}
+	return b.String()
+}
+
+// renderEventRow draws one activity line, laying the selection band under
+// every cell the way a pull request row does.
+func (m Model) renderEventRow(e gh.Event, sel bool, refWidth, actorWidth int) string {
+	p := painter{sel: sel}
+	var b strings.Builder
+
+	if sel {
+		b.WriteString(p.cell(stCursor, "▸"))
+	} else {
+		b.WriteString(p.cell(stText, " "))
+	}
+	b.WriteString(p.cell(stFaint, e.At.Local().Format("15:04:05")))
+	b.WriteString(p.sep())
+	b.WriteString(p.sep())
+
+	// Padded after linking: the escape sequence has no width, so the cell
+	// must be measured with visibleWidth.
+	refText := link(m.cfg.Links, e.URL, eventRefText(shortRepo(e.Repo), e.Number, refWidth))
+	b.WriteString(p.cell(stMuted, padVisible(refText, refWidth)))
+	b.WriteString(p.sep())
+	b.WriteString(p.sep())
+	b.WriteString(p.cell(eventStyle(e.Kind), pad(e.Kind.Icon()+" "+e.Text, evWhatWidth)))
+
+	if actorWidth > 0 && e.Actor != "" {
+		b.WriteString(p.sep())
+		b.WriteString(p.sep())
+		b.WriteString(p.cell(stActor, pad(e.Actor, actorWidth)))
+	}
+	return p.finish(b.String(), m.width)
 }
 
 func shortRepo(repo string) string {
@@ -240,8 +283,15 @@ func oneLine(s string) string {
 }
 
 func (m Model) hintsView() string {
-	parts := make([]string, 0, len(shortHelp))
-	for _, k := range shortHelp {
+	// Tied to the pane actually being drawn, not just to the flag: a short
+	// terminal drops the feed, and hints for keys that steer nothing visible
+	// would be worse than none.
+	set := shortHelp
+	if _, shown := m.panes(); m.eventsFocus && shown {
+		set = feedHelp
+	}
+	parts := make([]string, 0, len(set))
+	for _, k := range set {
 		h := k.Help()
 		parts = append(parts, stKey.Render(h.Key)+stFaint.Render(" "+h.Desc))
 	}
@@ -268,6 +318,7 @@ func (m Model) helpView() string {
 		{stFresh.Render("●"), "changed in the last minute"},
 		{stGreen.Render("✓") + "/" + stRed.Render("✗") + "/" + stYellow.Render("•"), "checks passing / failing / running"},
 		{stGreen.Render("✓") + "/" + stRed.Render("±") + "/" + stBlue.Render("◷"), "approved / changes requested / review pending"},
+		{eventStyle(gh.EventMention).Render("@"), "an activity line where someone named you"},
 		{stFaint.Render("HIDDEN"), "dismissed with h; only listed while H is on"},
 		{stYellow.Render("!"), "unresolved review threads"},
 		{stMuted.Render("+"), "more review threads than one page shows"},
@@ -281,6 +332,9 @@ func (m Model) helpView() string {
 		names = append(names, s.String())
 	}
 	b.WriteString(stMuted.Render(strings.Join(names, " → ")))
+	b.WriteString("\n")
+	b.WriteString(stFaint.Render("   activity:    "))
+	b.WriteString(stMuted.Render("e shows the feed · e again steps into it to scroll back · esc returns"))
 	b.WriteString("\n")
 	b.WriteString(stFaint.Render("   mode cycles: "))
 	mnames := make([]string, 0)
