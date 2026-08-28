@@ -31,6 +31,16 @@ func inFeed(t *testing.T, events int) Model {
 	return press(press(m, 'e'), 'e')
 }
 
+// deeperThanThePane returns a focused feed holding more than it can draw, so
+// there is genuinely something below the fold to go looking for.
+func deeperThanThePane(t *testing.T) Model {
+	t.Helper()
+	m := inFeed(t, 4)
+	m.events = backlog(m.eventRowCount() * 3)
+	m.clampEvents()
+	return m
+}
+
 func TestTheActivityKeyCyclesShowScrollHide(t *testing.T) {
 	m := newLoaded(t, 140, 40)
 	m.events = backlog(30)
@@ -65,39 +75,45 @@ func TestAWatchedFeedLeavesTheListKeysAlone(t *testing.T) {
 }
 
 func TestScrollingBackReachesOlderActivity(t *testing.T) {
-	m := inFeed(t, 30)
+	m := deeperThanThePane(t)
+	newest := m.events[len(m.events)-1].Text
 
 	out := feedText(m)
-	if !strings.Contains(out, "event 29") {
+	if !strings.Contains(out, newest) {
 		t.Error("the newest event should be at the top of the pane")
 	}
 	if strings.Contains(out, "event 00") {
 		t.Fatal("the fixture is too small: the whole backlog fits without scrolling")
 	}
 
-	for i := 0; i < 10; i++ {
+	// A page and a half down: far enough that the top of the pane has moved.
+	for i := 0; i < m.eventRowCount()+5; i++ {
 		m = press(m, 'j')
 	}
 	out = feedText(m)
-	if !strings.Contains(out, "event 19") {
-		t.Errorf("scrolling back did not reach older activity:\n%s", out)
+	if strings.Contains(out, newest) {
+		t.Errorf("the window should have moved off %q:\n%s", newest, out)
 	}
-	if strings.Contains(out, "event 29") {
-		t.Error("the window should have moved off the newest event")
+	if !strings.Contains(out, m.selectedEvent().Text) {
+		t.Error("the cursor scrolled out of its own pane")
 	}
 }
 
 // The newest event is drawn at the top, so g and G run with the screen rather
 // than with the clock.
 func TestTheFeedJumpsToEitherEnd(t *testing.T) {
-	m := inFeed(t, 30)
+	m := deeperThanThePane(t)
+	newest := m.events[len(m.events)-1].Text
 
 	m = press(m, 'G')
 	if !strings.Contains(feedText(m), "event 00") {
 		t.Error("G should reach the oldest thing in the backlog")
 	}
+	if strings.Contains(feedText(m), newest) {
+		t.Error("G left the newest event on screen")
+	}
 	m = press(m, 'g')
-	if !strings.Contains(feedText(m), "event 29") {
+	if !strings.Contains(feedText(m), newest) {
 		t.Error("g should come back to the newest")
 	}
 }
@@ -226,18 +242,17 @@ func TestTheFeedPaneIsAlwaysTheSameHeight(t *testing.T) {
 
 		m = press(m, 'e') // shown, but not focused
 		if got := strings.Count(m.eventsView(), "\n"); got != eventsHeight {
-			t.Errorf("%d events: pane emitted %d lines, want %d", n, got, eventsHeight)
+			t.Errorf("%d events: resting pane emitted %d lines, want %d", n, got, eventsHeight)
 		}
-		m = press(m, 'e') // focused, with a position in the title bar
+		m = press(m, 'e') // focused, and grown into the room the list is not using
 		if !m.eventsFocus {
 			t.Fatalf("%d events: the feed did not take focus", n)
 		}
-		if got := strings.Count(m.eventsView(), "\n"); got != eventsHeight {
-			t.Errorf("%d events, focused: pane emitted %d lines, want %d", n, got, eventsHeight)
-		}
-		m = press(m, 'G') // scrolled to the far end of the backlog
-		if got := strings.Count(m.eventsView(), "\n"); got != eventsHeight {
-			t.Errorf("%d events, scrolled: pane emitted %d lines, want %d", n, got, eventsHeight)
+		for _, stage := range []string{"focused", "scrolled"} {
+			if got, want := strings.Count(m.eventsView(), "\n"), m.eventsPaneHeight(); got != want {
+				t.Errorf("%d events, %s: pane emitted %d lines, want %d", n, stage, got, want)
+			}
+			m = press(m, 'G')
 		}
 	}
 }
@@ -255,6 +270,24 @@ func TestAFocusedFeedFitsTheTerminal(t *testing.T) {
 		for i, ln := range lines(m.View()) {
 			if got := ansi.StringWidth(ln); got > size.w {
 				t.Errorf("width %d: line %d is %d cells: %q", size.w, i, got, ansi.Strip(ln))
+			}
+		}
+	}
+}
+
+func TestAFocusedFeedNeverOverflowsTheScreen(t *testing.T) {
+	for _, size := range []struct{ w, h int }{{60, 12}, {80, 20}, {104, 24}, {140, 40}, {200, 60}} {
+		m := newLoaded(t, size.w, size.h)
+		m.events = backlog(200)
+		m = press(press(m, 'e'), 'e')
+		for _, withDetail := range []bool{false, true} {
+			m.showDetail = withDetail
+			m.clampScroll()
+			if got := len(lines(m.View())); got > size.h {
+				t.Errorf("%dx%d detail=%v: frame is %d lines", size.w, size.h, withDetail, got)
+			}
+			if m.listHeight() < 0 {
+				t.Errorf("%dx%d detail=%v: the list was squeezed to %d", size.w, size.h, withDetail, m.listHeight())
 			}
 		}
 	}

@@ -15,7 +15,8 @@ const (
 	detailHeight = 11
 	eventsHeight = 9
 	minList      = 3
-	// eventRows is how many activity lines fit under the pane's title bar.
+	// eventRows is how many activity lines fit under the title bar of a pane
+	// at its resting height. A focused feed grows past it; see eventRowCount.
 	eventRows = eventsHeight - 1
 )
 
@@ -72,7 +73,35 @@ func (m *Model) layout() layout {
 	return l
 }
 
+// eventsPaneHeight is how many lines the activity pane takes up.
+//
+// It grows while the feed has the keys. Eight rows is the right size for
+// watching activity go past out of the corner of an eye, and far too small for
+// reading a month of it back — the pane you are actively in should be the one
+// with the room. The list keeps minList rows throughout, so stepping into the
+// feed never loses your place in it.
+func (m *Model) eventsPaneHeight() int {
+	if !m.eventsFocus {
+		return eventsHeight
+	}
+	avail := m.height - headerHeight - footerHeight - minList
+	if detail, _ := m.panes(); detail {
+		avail -= detailHeight
+	}
+	if avail < eventsHeight {
+		return eventsHeight
+	}
+	return avail
+}
+
+// eventRowCount is how many activity lines the pane can currently draw.
+func (m *Model) eventRowCount() int { return max(1, m.eventsPaneHeight()-1) }
+
 // panes reports which optional panes actually fit in the current height.
+//
+// The fit is judged at the resting height, never the grown one: a feed may
+// only expand into room it was already entitled to, so focusing it can never
+// push the detail pane off the screen.
 func (m *Model) panes() (detail, events bool) {
 	detail, events = m.showDetail, m.showEvents
 	avail := m.height - headerHeight - footerHeight

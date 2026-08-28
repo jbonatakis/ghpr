@@ -160,9 +160,10 @@ func (m Model) eventsView() string {
 	// Deliberately the whole log: activity is a session-wide record, not a
 	// view of the current mode. Switching mode or hiding a pull request does
 	// not un-happen what it did.
+	rows := m.eventRowCount()
 	if len(m.events) == 0 {
 		b.WriteString(" " + stMuted.Render(m.emptyFeedText()) + "\n")
-		for i := 2; i <= eventRows; i++ {
+		for i := 2; i <= rows; i++ {
 			b.WriteString("\n")
 		}
 		return b.String()
@@ -177,13 +178,13 @@ func (m Model) eventsView() string {
 	}
 
 	drawn := 0
-	for d := m.eventTop; d < m.eventTop+eventRows && d < len(m.events); d++ {
+	for d := m.eventTop; d < m.eventTop+rows && d < len(m.events); d++ {
 		e := m.events[len(m.events)-1-d]
 		b.WriteString(m.renderEventRow(e, m.eventsFocus && d == m.eventCursor, refWidth, actorWidth))
 		b.WriteString("\n")
 		drawn++
 	}
-	for i := drawn; i < eventRows; i++ {
+	for i := drawn; i < rows; i++ {
 		b.WriteString("\n")
 	}
 	return b.String()
@@ -209,9 +210,19 @@ func (m Model) eventsTitle() string {
 	if m.eventsFocus {
 		style = stTitle
 	}
+	// Focused, the bar carries the cursor's place in the backlog. Unfocused,
+	// it says how much is below the fold — without which a full pane and a
+	// backlog of hundreds look exactly alike, and the feed appears to hold
+	// only the eight lines it happens to be showing.
 	position := ""
-	if m.eventsFocus && len(m.events) > 0 {
+	switch {
+	case m.eventsFocus && len(m.events) > 0:
 		position = fmt.Sprintf(" %d/%d ", m.eventCursor+1, len(m.events))
+	case len(m.events) > m.eventRowCount():
+		// Both halves matter: that there is more, and that reaching it takes
+		// a keypress. Without the second, arrow keys move the list instead
+		// and the feed looks stuck.
+		position = fmt.Sprintf(" +%d more · e to scroll ", len(m.events)-m.eventRowCount())
 	}
 
 	lead := max(0, min(m.width, 10))

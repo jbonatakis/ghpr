@@ -218,9 +218,9 @@ func (m Model) handleEventKey(msg tea.KeyMsg) (Model, tea.Cmd, bool) {
 	case key.Matches(msg, keys.Down):
 		m.moveEvent(1)
 	case key.Matches(msg, keys.PageUp):
-		m.moveEvent(-eventRows)
+		m.moveEvent(-m.eventRowCount())
 	case key.Matches(msg, keys.PageDown):
-		m.moveEvent(eventRows)
+		m.moveEvent(m.eventRowCount())
 	case key.Matches(msg, keys.Home):
 		// The newest event is at the top, so g and G run with the screen
 		// rather than with the clock.
@@ -353,7 +353,7 @@ func (m *Model) listHeight() int {
 		h -= detailHeight
 	}
 	if events {
-		h -= eventsHeight
+		h -= m.eventsPaneHeight()
 	}
 	return max(0, h)
 }

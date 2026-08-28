@@ -267,6 +267,11 @@ key in the config file if you would rather not type it every time:
  10:03:00  design-docs#9                                   + opened               sam-okafor
 ```
 
+If the backfill finds anything, the pane opens itself — a feed filled in behind
+a closed pane answers a question you cannot see it answering. It opens on the
+first stop, not the second, so the arrow keys still move the list; press `e` to
+step in and scroll.
+
 `· ghpr started` is the boundary. Above it is the ordinary feed — things ghpr
 watched change between two of its own polls. Below it is reconstruction: the
 same one search, read for the timestamps GitHub attaches to what it returns.
@@ -275,6 +280,14 @@ Both are real, but they are not the same kind of claim, and the line says so.
 It costs nothing. The dates come from fields the query was already fetching,
 plus two scalars (`committedDate` on the head commit, `completedAt` on each
 check), and GraphQL bills for nodes rather than scalar fields.
+
+**Widening the window has a ceiling.** `-seed 720h` does not fetch thirty days
+of history; it stops excluding what the one snapshot already contains, which is
+at most a handful of dated things per pull request — when it was opened, its
+newest three conversation comments, one review per reviewer, its head commit,
+its last check. Past that point a longer window adds nothing, because there is
+nothing more in the response to date. If a wide window looks thin, the per-pull-
+request caps are the reason, not the window.
 
 **It is a floor, not a record.** One search returns the newest three
 conversation comments per pull request and one review per reviewer, so a busy
@@ -301,12 +314,22 @@ every mode, and the searches overlap.
 
 ### Reading back through the feed
 
-`e` has three stops: show the feed, step into it, put it away. The middle one is
-the new part — the pane brightens, picks up a position counter, and takes the
-navigation keys:
+`e` has three stops: show the feed, step into it, put it away.
+
+The first stop is a pane you watch out of the corner of an eye. The arrow keys
+still belong to the pull request list, exactly as they always did — so the
+title bar says what you are missing and how to get at it:
 
 ```
-────────── activity  4/38 ─────────────────────────────────────────────────────
+────────── activity  +39 more · e to scroll ───────────────────────────────────
+```
+
+Press `e` again and the feed takes the keys. It also grows into whatever room
+the list is not using, because eight rows is right for glancing at and far too
+small for reading a month back through:
+
+```
+────────── activity  4/47 ─────────────────────────────────────────────────────
  10:36:10  starfield#130                                   → review requested     sam-okafor
  10:35:33  design-docs#9                                   ✔ merged
  10:34:56  starfield#84                                    ! now conflicting
@@ -315,11 +338,10 @@ navigation keys:
 
 `↑`/`↓` scroll, `pgup`/`pgdn` page, `g` and `G` jump to the newest and oldest,
 `enter` opens the pull request the selected line names, `y` copies its URL, and
-`esc` hands the keys back to the list. The newest event is at the top, so `g`
-and `G` run with the screen rather than with the clock.
-
-Opening the feed without stepping into it leaves the list keys alone, so
-watching activity go by while working the list still behaves as it always did.
+`esc` hands the keys back to the list and shrinks the pane again. The newest
+event is at the top, so `g` and `G` run with the screen rather than with the
+clock. The list keeps at least three rows throughout, so you never lose your
+place in it.
 
 A poll that lands while you are reading does not move the line you are on: the
 feed only follows along live while the cursor is at the top, which is where a

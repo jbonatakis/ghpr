@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -456,7 +457,14 @@ func (m Model) applyFetch(msg fetchDoneMsg) (tea.Model, tea.Cmd) {
 			// answering — and looks exactly like the feature not working.
 			// Only when there is something to show: opening onto "nothing
 			// happened" would just be a pane in the way.
+			//
+			// It opens unfocused, so the arrow keys still belong to the list
+			// as they always have. That is worth saying out loud, because a
+			// pane that appeared on its own gives no hint that getting into
+			// it takes a keypress.
 			m.showEvents = true
+			m.setToast(fmt.Sprintf("%s from the last %s — e to scroll the feed",
+				plural(len(seed), "event"), tidyDuration(m.cfg.Seed)))
 		}
 	}
 	events = append(events, gh.Diff(prev, next, gh.DiffOpts{
@@ -628,7 +636,7 @@ func (m *Model) record(events []gh.Event) {
 
 // clampEvents keeps the feed cursor and its window inside the backlog.
 func (m *Model) clampEvents() {
-	h := eventRows
+	h := m.eventRowCount()
 	if m.eventCursor < 0 {
 		m.eventCursor = 0
 	}
@@ -673,6 +681,8 @@ func (m *Model) selectedEvent() *gh.Event {
 func (m *Model) leaveEvents() {
 	m.eventsFocus = false
 	m.eventCursor, m.eventTop = 0, 0
+	// The pane shrinks back on the way out, so the list gets its rows again.
+	m.clampScroll()
 }
 
 func (m *Model) selectedKey() string {
