@@ -32,6 +32,28 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
+	if m.feedFiltering {
+		switch msg.String() {
+		case "enter":
+			m.feedFiltering = false
+			m.feedFilter.Blur()
+			return m, nil
+		case "esc":
+			// Clears the filter but stays in the feed: esc backs out one step
+			// at a time, and the next one hands the keys to the list.
+			m.feedFiltering = false
+			m.feedFilter.Blur()
+			m.feedFilter.Reset()
+			m.clampEvents()
+			return m, nil
+		}
+		var cmd tea.Cmd
+		m.feedFilter, cmd = m.feedFilter.Update(msg)
+		m.eventCursor, m.eventTop = 0, 0
+		m.clampEvents()
+		return m, cmd
+	}
+
 	if m.showOrgs {
 		return m.handleOrgKey(msg)
 	}
@@ -213,6 +235,12 @@ func (m Model) handleEventKey(msg tea.KeyMsg) (Model, tea.Cmd, bool) {
 	}
 
 	switch {
+	case key.Matches(msg, keys.Filter):
+		// While the feed has the keys, / is one of them. The list keeps its own
+		// filter, untouched, for when the keys go back.
+		m.feedFiltering = true
+		return m, m.feedFilter.Focus(), true
+
 	case key.Matches(msg, keys.Up):
 		m.moveEvent(-1)
 	case key.Matches(msg, keys.Down):
@@ -224,9 +252,9 @@ func (m Model) handleEventKey(msg tea.KeyMsg) (Model, tea.Cmd, bool) {
 	case key.Matches(msg, keys.Home):
 		// The newest event is at the top, so g and G run with the screen
 		// rather than with the clock.
-		m.moveEvent(-len(m.events))
+		m.moveEvent(-len(m.feedEvents()))
 	case key.Matches(msg, keys.End):
-		m.moveEvent(len(m.events))
+		m.moveEvent(len(m.feedEvents()))
 
 	case key.Matches(msg, keys.Open):
 		if e := m.selectedEvent(); e != nil && e.URL != "" {

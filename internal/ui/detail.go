@@ -161,7 +161,8 @@ func (m Model) eventsView() string {
 	// view of the current mode. Switching mode or hiding a pull request does
 	// not un-happen what it did.
 	rows := m.eventRowCount()
-	if len(m.events) == 0 {
+	events := m.feedEvents()
+	if len(events) == 0 {
 		b.WriteString(" " + stMuted.Render(m.emptyFeedText()) + "\n")
 		for i := 2; i <= rows; i++ {
 			b.WriteString("\n")
@@ -178,8 +179,8 @@ func (m Model) eventsView() string {
 	}
 
 	drawn := 0
-	for d := m.eventTop; d < m.eventTop+rows && d < len(m.events); d++ {
-		e := m.events[len(m.events)-1-d]
+	for d := m.eventTop; d < m.eventTop+rows && d < len(events); d++ {
+		e := events[len(events)-1-d]
 		b.WriteString(m.renderEventRow(e, m.eventsFocus && d == m.eventCursor, refWidth, actorWidth))
 		b.WriteString("\n")
 		drawn++
@@ -195,6 +196,11 @@ func (m Model) eventsView() string {
 // them you are looking at is the first thing anyone wants to know when the
 // backfill appears to have done nothing.
 func (m Model) emptyFeedText() string {
+	// A filter hiding everything is a different situation from a quiet hour,
+	// and the record is still whole underneath either way.
+	if m.feedFiltered() {
+		return fmt.Sprintf("nothing in %s of activity matches this filter", plural(len(m.events), "line"))
+	}
 	if m.seeded && m.cfg.Seed > 0 {
 		return fmt.Sprintf("nothing in the last %s · watching for changes…", tidyDuration(m.cfg.Seed))
 	}
@@ -215,14 +221,21 @@ func (m Model) eventsTitle() string {
 	// backlog of hundreds look exactly alike, and the feed appears to hold
 	// only the eight lines it happens to be showing.
 	position := ""
+	shown := len(m.feedEvents())
 	switch {
-	case m.eventsFocus && len(m.events) > 0:
-		position = fmt.Sprintf(" %d/%d ", m.eventCursor+1, len(m.events))
-	case len(m.events) > m.eventRowCount():
+	case m.feedFiltered() && m.eventsFocus && shown > 0:
+		// Where you are, and that where you are is inside a slice: a filtered
+		// feed must never be mistaken for the whole record.
+		position = fmt.Sprintf(" %d/%d · filtered from %d ", m.eventCursor+1, shown, len(m.events))
+	case m.feedFiltered():
+		position = fmt.Sprintf(" %d of %d · filtered ", shown, len(m.events))
+	case m.eventsFocus && shown > 0:
+		position = fmt.Sprintf(" %d/%d ", m.eventCursor+1, shown)
+	case shown > m.eventRowCount():
 		// Both halves matter: that there is more, and that reaching it takes
 		// a keypress. Without the second, arrow keys move the list instead
 		// and the feed looks stuck.
-		position = fmt.Sprintf(" +%d more · e to scroll ", len(m.events)-m.eventRowCount())
+		position = fmt.Sprintf(" +%d more · e to scroll ", shown-m.eventRowCount())
 	}
 
 	lead := max(0, min(m.width, 10))
@@ -288,6 +301,8 @@ func (m Model) footerView() string {
 	// multi-line HTML, and a footer that grows pushes the list off the screen.
 	var line string
 	switch {
+	case m.feedFiltering:
+		line = m.feedFilter.View()
 	case m.filtering:
 		line = m.filter.View()
 	case m.err != nil:

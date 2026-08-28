@@ -146,6 +146,12 @@ type Model struct {
 	eventCursor int
 	eventTop    int
 
+	// The feed has its own filter, deliberately separate from the list's. The
+	// backlog stays a complete record of the session either way; these are two
+	// independent views onto it, so narrowing one never narrows the other.
+	feedFilter    textinput.Model
+	feedFiltering bool
+
 	// seeded records that the backlog has already been filled in once. It is
 	// per session rather than per search: switching mode starts a new list,
 	// but the feed spans them all, and seeding again would repeat the history
@@ -193,6 +199,12 @@ func New(cfg Config) Model {
 	ti.PromptStyle = stBold
 	ti.CharLimit = 80
 
+	fi := textinput.New()
+	fi.Prompt = "activity: "
+	fi.Placeholder = "repo, number, what happened, who…"
+	fi.PromptStyle = stBold
+	fi.CharLimit = 80
+
 	sp := spinner.New(spinner.WithSpinner(spinner.MiniDot), spinner.WithStyle(stMuted))
 
 	// A caller that never loaded a config would otherwise inherit Go's zero
@@ -218,6 +230,7 @@ func New(cfg Config) Model {
 		hideDrafts:  cfg.Prefs.HideDrafts,
 		sortBy:      parseSort(cfg.Prefs.Sort),
 		filter:      ti,
+		feedFilter:  fi,
 		spin:        sp,
 		now:         now,
 		nextFetch:   now,
@@ -696,23 +709,56 @@ func (m *Model) record(events []gh.Event) {
 // which is the order the pane draws in. A line that has fallen off the end of
 // the backlog reports 0, putting the cursor back on the present.
 func (m *Model) displayIndexOf(want gh.Event) int {
-	for i := len(m.events) - 1; i >= 0; i-- {
-		e := m.events[i]
+	ev := m.feedEvents()
+	for i := len(ev) - 1; i >= 0; i-- {
+		e := ev[i]
 		if e.Kind == want.Kind && e.Key == want.Key && e.Text == want.Text && e.At.Equal(want.At) {
-			return len(m.events) - 1 - i
+			return len(ev) - 1 - i
 		}
 	}
 	return 0
 }
 
+// feedEvents is what the activity pane is currently showing. The backlog
+// itself is never narrowed — hiding a pull request or switching mode does not
+// un-happen what it did — so this is a view, rebuilt on demand.
+func (m *Model) feedEvents() []gh.Event {
+	q := strings.ToLower(strings.TrimSpace(m.feedFilter.Value()))
+	if q == "" {
+		return m.events
+	}
+	out := make([]gh.Event, 0, len(m.events))
+	for _, e := range m.events {
+		if matchesEvent(e, q) {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// matchesEvent searches everything an activity line actually shows: which pull
+// request it was, what happened, and who did it.
+func matchesEvent(e gh.Event, q string) bool {
+	return strings.Contains(strings.ToLower(e.Text), q) ||
+		strings.Contains(strings.ToLower(e.Actor), q) ||
+		strings.Contains(strings.ToLower(e.Repo), q) ||
+		strings.Contains(strconv.Itoa(e.Number), q)
+}
+
+// feedFiltered reports whether the pane is showing less than the whole record.
+func (m *Model) feedFiltered() bool {
+	return strings.TrimSpace(m.feedFilter.Value()) != ""
+}
+
 // clampEvents keeps the feed cursor and its window inside the backlog.
 func (m *Model) clampEvents() {
 	h := m.eventRowCount()
+	n := len(m.feedEvents())
 	if m.eventCursor < 0 {
 		m.eventCursor = 0
 	}
-	if m.eventCursor >= len(m.events) {
-		m.eventCursor = max(0, len(m.events)-1)
+	if m.eventCursor >= n {
+		m.eventCursor = max(0, n-1)
 	}
 	if m.eventCursor < m.eventTop {
 		m.eventTop = m.eventCursor
@@ -720,7 +766,7 @@ func (m *Model) clampEvents() {
 	if m.eventCursor >= m.eventTop+h {
 		m.eventTop = m.eventCursor - h + 1
 	}
-	if maxTop := max(0, len(m.events)-h); m.eventTop > maxTop {
+	if maxTop := max(0, n-h); m.eventTop > maxTop {
 		m.eventTop = maxTop
 	}
 	if m.eventTop < 0 {
@@ -731,7 +777,7 @@ func (m *Model) clampEvents() {
 // moveEvent walks the feed cursor; positive is further back in time, which is
 // downwards on screen because the newest event is drawn at the top.
 func (m *Model) moveEvent(delta int) {
-	if len(m.events) == 0 {
+	if len(m.feedEvents()) == 0 {
 		return
 	}
 	m.eventCursor += delta
@@ -741,16 +787,20 @@ func (m *Model) moveEvent(delta int) {
 // selectedEvent is the feed line under the cursor, or nil when the feed is
 // empty or not being navigated.
 func (m *Model) selectedEvent() *gh.Event {
-	if !m.eventsFocus || m.eventCursor < 0 || m.eventCursor >= len(m.events) {
+	ev := m.feedEvents()
+	if !m.eventsFocus || m.eventCursor < 0 || m.eventCursor >= len(ev) {
 		return nil
 	}
-	return &m.events[len(m.events)-1-m.eventCursor]
+	return &ev[len(ev)-1-m.eventCursor]
 }
 
 // leaveEvents drops out of the feed and returns it to the live view, so the
 // pane never sits frozen on old activity once it stops being read.
 func (m *Model) leaveEvents() {
 	m.eventsFocus = false
+	m.feedFiltering = false
+	m.feedFilter.Blur()
+	m.feedFilter.Reset()
 	m.eventCursor, m.eventTop = 0, 0
 	// The pane shrinks back on the way out, so the list gets its rows again.
 	m.clampScroll()

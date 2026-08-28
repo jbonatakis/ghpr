@@ -78,7 +78,7 @@ ghpr -once                            # plain-text snapshot, no TUI
 | `m` | cycle mode: authored → review-requested → involved |
 | `D` | show or hide drafts |
 | `O` | choose which organizations appear |
-| `/` | filter by repo, title, number, label, reviewer or status |
+| `/` | filter the list — or the activity feed, when the feed has the keys |
 | `r` | refresh now |
 | `?` | help |
 | `q` | quit |
@@ -365,11 +365,31 @@ small for reading a month back through:
 ```
 
 `↑`/`↓` scroll, `pgup`/`pgdn` page, `g` and `G` jump to the newest and oldest,
-`enter` opens the pull request the selected line names, `y` copies its URL, and
-`esc` hands the keys back to the list and shrinks the pane again. The newest
+`enter` opens the pull request the selected line names, `y` copies its URL, `/`
+filters, and `esc` hands the keys back to the list and shrinks the pane again. The newest
 event is at the top, so `g` and `G` run with the screen rather than with the
 clock. The list keeps at least three rows throughout, so you never lose your
 place in it.
+
+`/` inside the feed searches the activity rather than the pull requests —
+repository, number, what happened, and who did it:
+
+```
+────────── activity  1/3 · filtered from 8 ────────────────────────────────────
+▸15:03:20  design-docs#12                             @ mentioned you        dana-quill
+ 14:58:20  starfield#44                               ★ changes requested    dana-quill
+ 14:57:20  starfield#44                               » new comment          dana-quill
+```
+
+The two filters are separate boxes and stay out of each other's way: narrowing
+the feed leaves the list exactly as it was, and the list's filter still never
+touches the feed. Neither narrows the backlog itself — these are views onto a
+record that stays whole. `esc` backs out one step at a time, clearing the
+filter first and handing the keys back second, and leaving the feed drops the
+filter along with the scroll position.
+
+With the pane merely open rather than stepped into, `/` still filters the list,
+which is what you want with the feed sitting beside you.
 
 A poll that lands while you are reading does not move the line you are on: the
 feed only follows along live while the cursor is at the top, which is where a

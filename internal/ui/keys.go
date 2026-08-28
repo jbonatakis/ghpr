@@ -66,7 +66,7 @@ var shortHelp = []key.Binding{
 // Paging and the g/G jumps are left to the ? overlay so this line still fits
 // on a narrow terminal, where being told how to get out matters most.
 var feedHelp = []key.Binding{
-	keys.Up, keys.Down, keys.Open, keys.Copy, keys.Leave, keys.Help,
+	keys.Up, keys.Down, keys.Open, keys.Copy, keys.Filter, keys.Leave,
 }
 
 // fullHelp is the ? overlay, laid out in columns.
