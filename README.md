@@ -331,9 +331,15 @@ is:pr archived:false review-requested:@me  updated:2026-08-28T01:00..2026-08-28T
 - **Divided and run four at a time.** A long window is cut into chunks — six
   hours at the narrowest, at most six of them, so a month is twelve searches
   rather than the two hundred and forty a fixed chunk width would give. They
-  run newest-window-first across a pool of four, and each lands in the feed as
-  it arrives, so the most recent activity is readable while the rest is still
-  being gathered. GitHub asks that requests for one user be made serially and
+  run newest-window-first across a pool of four, and each window lands in the
+  feed as it completes, so the most recent activity is readable while the rest
+  is still being gathered. **In window order, not finishing order** — the pool
+  answers out of sequence, and filing a late-finishing early window would drop
+  newer activity in above whatever you were already reading. Because a window
+  bounds `updated`, and a pull request's newest event is never later than its
+  `updated`, window *n* can hold nothing newer than where window *n-1* begins:
+  released in order, the top of the feed settles as soon as the first window
+  lands and then stays put while everything older arrives underneath it. GitHub asks that requests for one user be made serially and
   answers a burst with a secondary rate limit, so four is a compromise rather
   than a maximum.
 - **Stopped as soon as the backlog is full.** The feed keeps the newest 500

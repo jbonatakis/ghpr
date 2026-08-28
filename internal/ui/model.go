@@ -178,6 +178,16 @@ type Model struct {
 	backfillSeen    map[string]bool
 	backfillFound   int
 
+	// The pool finishes windows out of order, so answers are held until every
+	// window ahead of them has been filed. Without that the feed jumps: a slow
+	// first window drops newer activity in above whatever is already on screen,
+	// instead of the older activity arriving underneath it.
+	backfillHeld    map[int][]gh.PR
+	backfillAnswers map[int]int
+	backfillNext    int
+	backfillViewer  string
+	backfillSince   time.Time
+
 	// absent tracks pull requests that dropped out of the search but have not
 	// been accounted for. They stay on screen and are looked up directly, so a
 	// page-boundary artifact never shows up as "merged or closed".
@@ -256,13 +266,15 @@ func New(cfg Config) Model {
 		nextFetch:   now,
 		loading:     true,
 		// Init issues the backfill on exactly this condition.
-		backfilling:  cfg.Seed > 0,
-		backfillCh:   backfillChannel(cfg.Seed),
-		backfillStop: make(chan struct{}),
-		backfillSeen: map[string]bool{},
-		fetchSeq:     1,
-		width:        100,
-		height:       30,
+		backfilling:     cfg.Seed > 0,
+		backfillCh:      backfillChannel(cfg.Seed),
+		backfillStop:    make(chan struct{}),
+		backfillSeen:    map[string]bool{},
+		backfillHeld:    map[int][]gh.PR{},
+		backfillAnswers: map[int]int{},
+		fetchSeq:        1,
+		width:           100,
+		height:          30,
 	}
 }
 
@@ -355,6 +367,7 @@ type backfillChunkMsg struct {
 	prs    []gh.PR
 	viewer string
 	since  time.Time
+	window int
 	err    error
 }
 
@@ -416,7 +429,8 @@ func (m Model) runBackfill() tea.Cmd {
 					}
 					res, err := cfg.Client.Backfill(ctx, plan.Query, cfg.Max)
 					out <- backfillChunkMsg{
-						prs: res.PRs, viewer: res.Viewer, since: since, err: err,
+						prs: res.PRs, viewer: res.Viewer, since: since,
+						window: plan.Window, err: err,
 					}
 				}
 			}()
@@ -472,27 +486,49 @@ func (m Model) Init() tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-// applyBackfillChunk files one search's worth of reconstructed history.
+// applyBackfillChunk holds one search's answer until its window's turn.
 func (m Model) applyBackfillChunk(msg backfillChunkMsg) Model {
 	if msg.err != nil {
 		// Remembered rather than reported: the other searches may still find
-		// plenty, and only a complete washout is worth calling a failure.
+		// plenty, and only a complete washout is worth calling a failure. The
+		// window is still counted as answered, or its turn never comes and
+		// everything behind it waits forever.
 		m.seedFailed = true
+	} else {
+		m.backfillHeld[msg.window] = append(m.backfillHeld[msg.window], msg.prs...)
+		if m.backfillViewer == "" {
+			m.backfillViewer = msg.viewer
+		}
+		m.backfillSince = msg.since
+	}
+	m.backfillAnswers[msg.window]++
+
+	// Release every window that is now complete and has nothing older ahead
+	// of it still outstanding.
+	for m.backfillAnswers[m.backfillNext] >= gh.BackfillShapes {
+		m = m.releaseBackfillWindow(m.backfillNext)
+		m.backfillNext++
+	}
+	return m
+}
+
+// releaseBackfillWindow files one window's findings into the feed.
+func (m Model) releaseBackfillWindow(window int) Model {
+	prs := m.backfillHeld[window]
+	delete(m.backfillHeld, window)
+	if len(prs) == 0 {
 		return m
 	}
-	if m.backfillSeen == nil {
-		m.backfillSeen = map[string]bool{}
-	}
 
-	fresh := make([]gh.PR, 0, len(msg.prs))
-	for _, p := range msg.prs {
+	fresh := make([]gh.PR, 0, len(prs))
+	for _, p := range prs {
 		if m.backfillSeen[p.Key()] {
 			continue // the search shapes overlap, and windows share their bounds
 		}
 		m.backfillSeen[p.Key()] = true
 		fresh = append(fresh, p)
 	}
-	events := gh.Seed(fresh, msg.since, msg.viewer)
+	events := gh.Seed(fresh, m.backfillSince, m.backfillViewer)
 	if len(events) == 0 {
 		return m
 	}
@@ -500,7 +536,7 @@ func (m Model) applyBackfillChunk(msg backfillChunkMsg) Model {
 	first := m.backfillFound == 0
 	m.backfillFound += len(events)
 	if m.backfillFound >= maxEvents && !m.backfillStopped {
-		// The backlog is full. Chunks come newest first, so anything still
+		// The backlog is full. Windows come newest first, so anything still
 		// queued is older than what has already been filed and would be
 		// trimmed away the moment it arrived — asking GitHub for it is work
 		// nobody will ever see.
@@ -518,11 +554,27 @@ func (m Model) applyBackfillChunk(msg backfillChunkMsg) Model {
 	return m
 }
 
+// flushBackfill files whatever is still held once the searches have stopped.
+// A window whose searches failed never completes, so without this everything
+// behind it would be gathered and then silently dropped.
+func (m Model) flushBackfill() Model {
+	windows := make([]int, 0, len(m.backfillHeld))
+	for w := range m.backfillHeld {
+		windows = append(windows, w)
+	}
+	sort.Ints(windows)
+	for _, w := range windows {
+		m = m.releaseBackfillWindow(w)
+	}
+	return m
+}
+
 // applyBackfill files the reconstructed past, if there was any.
 // applyBackfill closes the reconstruction out once every search has answered.
 // The events themselves arrived chunk by chunk; what is left is to stop saying
 // "filling in", and to say what it all came to.
 func (m Model) applyBackfill(msg backfillDoneMsg) Model {
+	m = m.flushBackfill()
 	m.seeded = true
 	m.backfilling = false
 

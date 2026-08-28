@@ -96,23 +96,41 @@ func (m Mode) Query(extra string) string {
 func BackfillSearches(extra string, since, now time.Time) []BackfillPlan {
 	var out []BackfillPlan
 	extra = strings.TrimSpace(extra)
-	for _, w := range backfillWindows(since, now) {
-		for _, who := range []string{"involves:@me ", "review-requested:@me "} {
+	for i, w := range backfillWindows(since, now) {
+		for _, who := range backfillShapes {
 			q := "is:pr archived:false " + who + w.qualifier() + " " + extra
 			out = append(out, BackfillPlan{
-				Query: strings.TrimSpace(q), From: w.from, To: w.to, Newest: w.newest,
+				Query: strings.TrimSpace(q), From: w.from, To: w.to,
+				Newest: w.newest, Window: i,
 			})
 		}
 	}
 	return out
 }
 
-// BackfillPlan is one search the backfill will run. The window it covers is
-// carried alongside the query so a caller can say what it is waiting on.
+// backfillShapes are the two searches run over every window. GitHub cannot
+// express their union in a single query.
+var backfillShapes = []string{"involves:@me ", "review-requested:@me "}
+
+// BackfillShapes is how many searches cover each window, so a caller can tell
+// when a window has been answered in full.
+const BackfillShapes = 2
+
+// BackfillPlan is one search the backfill will run.
+//
+// Window is its place in the sequence, counting back from the present. A caller
+// that wants the feed to grow downwards rather than jump about has to release
+// whole windows in that order. A window bounds updated, and a pull request's
+// newest event is never later than its updated, so window n can contain nothing
+// newer than where window n-1 begins — released in order, the top of the feed
+// settles as soon as the first window lands and then stays settled. Released as
+// they finish, a slow first window drops newer activity in above whatever the
+// reader is already looking at.
 type BackfillPlan struct {
 	Query    string
 	From, To time.Time
 	Newest   bool
+	Window   int
 }
 
 type backfillWindow struct {
