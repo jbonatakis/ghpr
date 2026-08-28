@@ -145,13 +145,20 @@ func TestVanishedReportsCandidates(t *testing.T) {
 func TestClosureEventDistinguishesMergedFromClosed(t *testing.T) {
 	now := time.Now()
 
-	merged := ClosureEvent(base(), StateMerged, now)
+	merged := ClosureEvent(base(), Outcome{State: StateMerged, By: "morgan-bell"}, now)
 	if merged.Kind != EventMerged || merged.Text != "merged" {
 		t.Errorf("merged event = %+v", merged)
 	}
-	closed := ClosureEvent(base(), StateClosed, now)
+	// A merge has someone behind it, and GitHub says who.
+	if merged.Actor != "morgan-bell" {
+		t.Errorf("merged event has no one attached: %+v", merged)
+	}
+	closed := ClosureEvent(base(), Outcome{State: StateClosed, By: "dana-quill"}, now)
 	if closed.Kind != EventClosed || closed.Text != "closed" {
 		t.Errorf("closed event = %+v", closed)
+	}
+	if closed.Actor != "dana-quill" {
+		t.Errorf("closed event has no one attached: %+v", closed)
 	}
 	if merged.Number != 96 || merged.Repo != "o/r" && merged.Repo == "" {
 		t.Errorf("closure event lost the PR's identity: %+v", merged)

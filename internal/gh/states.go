@@ -21,6 +21,10 @@ query($ids: [ID!]!) {
     ... on PullRequest {
       id
       state
+      mergedBy { login }
+      timelineItems(last: 1, itemTypes: [CLOSED_EVENT]) {
+        nodes { ... on ClosedEvent { actor { login } } }
+      }
     }
   }
 }`
@@ -34,14 +38,32 @@ type statesResponse struct {
 			ResetAt   string `json:"resetAt"`
 		} `json:"rateLimit"`
 		Nodes []struct {
-			ID    string `json:"id"`
-			State string `json:"state"`
+			ID       string `json:"id"`
+			State    string `json:"state"`
+			MergedBy struct {
+				Login string `json:"login"`
+			} `json:"mergedBy"`
+			TimelineItems struct {
+				Nodes []struct {
+					Actor struct {
+						Login string `json:"login"`
+					} `json:"actor"`
+				} `json:"nodes"`
+			} `json:"timelineItems"`
 		} `json:"nodes"`
 	} `json:"data"`
 	Errors []struct {
 		Message string `json:"message"`
 		Type    string `json:"type"`
 	} `json:"errors"`
+}
+
+// Outcome is what became of a pull request that left the search, and who did
+// it. GitHub names the merger outright; for a plain close it takes the last
+// close on the timeline, which is one extra node per pull request.
+type Outcome struct {
+	State State
+	By    string
 }
 
 // States looks up the current state of specific pull requests by node id.
@@ -51,8 +73,8 @@ type statesResponse struct {
 // — most often because another PR was updated mid-fetch and shifted the page
 // boundary — so absence alone is not evidence. Asking directly is one cheap
 // query and gives a definitive answer, including whether it merged or closed.
-func (c *Client) States(ctx context.Context, ids []string) (map[string]State, error) {
-	out := map[string]State{}
+func (c *Client) States(ctx context.Context, ids []string) (map[string]Outcome, error) {
+	out := map[string]Outcome{}
 	if len(ids) == 0 {
 		return out, nil
 	}
@@ -84,9 +106,14 @@ func (c *Client) States(ctx context.Context, ids []string) (map[string]State, er
 			return out, fmt.Errorf("github: %s", joined)
 		}
 		for _, n := range resp.Data.Nodes {
-			if n.ID != "" && n.State != "" {
-				out[n.ID] = State(n.State)
+			if n.ID == "" || n.State == "" {
+				continue
 			}
+			who := n.MergedBy.Login
+			if who == "" && len(n.TimelineItems.Nodes) > 0 {
+				who = n.TimelineItems.Nodes[0].Actor.Login
+			}
+			out[n.ID] = Outcome{State: State(n.State), By: who}
 		}
 	}
 	return out, nil

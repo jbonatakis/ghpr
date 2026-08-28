@@ -37,9 +37,9 @@ func Seed(prs []PR, since time.Time, viewer string) []Event {
 		// second search; the dashboard's own is open-only.
 		switch p.State {
 		case StateMerged:
-			add(p.FinishedAt, EventMerged, "", "merged")
+			add(p.FinishedAt, EventMerged, p.FinishedBy, "merged")
 		case StateClosed:
-			add(p.FinishedAt, EventClosed, "", "closed")
+			add(p.FinishedAt, EventClosed, p.FinishedBy, "closed")
 		}
 
 		// Every review where the backfill fetched them, one per reviewer where

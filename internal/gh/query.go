@@ -181,6 +181,16 @@ type prNode struct {
 	State    string `json:"state"`
 	MergedAt string `json:"mergedAt"`
 	ClosedAt string `json:"closedAt"`
+	MergedBy struct {
+		Login string `json:"login"`
+	} `json:"mergedBy"`
+	TimelineItems struct {
+		Nodes []struct {
+			Actor struct {
+				Login string `json:"login"`
+			} `json:"actor"`
+		} `json:"nodes"`
+	} `json:"timelineItems"`
 
 	// Reviews is every review, where LatestReviews is one per reviewer. A
 	// reviewer who came back three times is three events, not one.
@@ -257,6 +267,10 @@ query($q: String!, $n: Int!, $after: String) {
         updatedAt
         mergedAt
         closedAt
+        mergedBy { login }
+        timelineItems(last: 1, itemTypes: [CLOSED_EVENT]) {
+          nodes { ... on ClosedEvent { actor { login } } }
+        }
         additions
         deletions
         changedFiles

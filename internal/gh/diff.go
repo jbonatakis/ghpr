@@ -238,12 +238,15 @@ func Vanished(prev, next []PR) []PR {
 }
 
 // ClosureEvent describes a pull request that has genuinely left the list.
-func ClosureEvent(p PR, state State, now time.Time) Event {
+func ClosureEvent(p PR, o Outcome, now time.Time) Event {
 	kind, text := EventClosed, "closed"
-	if state == StateMerged {
+	if o.State == StateMerged {
 		kind, text = EventMerged, "merged"
 	}
-	return Event{At: now, Kind: kind, Key: p.Key(), Repo: p.Repo, Number: p.Number, Text: text, URL: p.URL}
+	return Event{
+		At: now, Kind: kind, Key: p.Key(), Repo: p.Repo,
+		Number: p.Number, Text: text, Actor: o.By, URL: p.URL,
+	}
 }
 
 // commentActor names who most likely left the new comments. A comment inside a

@@ -58,8 +58,8 @@ func TestStatesReportsEachLifecycle(t *testing.T) {
 		t.Fatalf("States: %v", err)
 	}
 	for id, want := range map[string]State{"open": StateOpen, "merged": StateMerged, "closed": StateClosed} {
-		if got[id] != want {
-			t.Errorf("%s = %q, want %q", id, got[id], want)
+		if got[id].State != want {
+			t.Errorf("%s = %q, want %q", id, got[id].State, want)
 		}
 	}
 }
@@ -110,8 +110,8 @@ func TestStatesOmitsUnresolvableIDs(t *testing.T) {
 	if _, ok := got["mystery"]; ok {
 		t.Error("an unresolvable id should be absent, not guessed at")
 	}
-	if got["known"] != StateMerged {
-		t.Errorf("known = %q", got["known"])
+	if got["known"].State != StateMerged {
+		t.Errorf("known = %q", got["known"].State)
 	}
 }
 

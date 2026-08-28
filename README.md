@@ -209,8 +209,11 @@ current mode, and the hide filters do not narrow it. Switching mode or
 dismissing a pull request changes what you are working on, not what already
 happened.
 
-Reviews name the exact reviewer, pushes name the committer, and comments name
-the author. Checks show no one, because no person is behind them. A comment left
+Reviews name the exact reviewer, pushes name the committer, comments name the
+author, and a merge or a close names whoever did it — GitHub reports the merger
+outright, and a plain close is read off the last close on the timeline. Checks
+show no one, because no person is behind them; a merge by an app or by GitHub
+itself comes back unattributed and is left blank rather than guessed at. A comment left
 inside a review thread carries no author in the cheap form of the query, so it
 is attributed to the review that delivered it — and left blank rather than
 guessed if even that is unavailable. All of this costs nothing extra: the query

@@ -354,7 +354,7 @@ type fetchDoneMsg struct {
 // verifyDoneMsg carries the true state of pull requests that went missing.
 type verifyDoneMsg struct {
 	seq     int
-	states  map[string]gh.State
+	states  map[string]gh.Outcome
 	checked []gh.PR
 	err     error
 }
@@ -856,15 +856,15 @@ func (m Model) applyVerify(msg verifyDoneMsg) Model {
 	var events []gh.Event
 
 	for _, p := range msg.checked {
-		state, known := msg.states[p.ID]
-		if !known || state == gh.StateOpen {
+		outcome, known := msg.states[p.ID]
+		if !known || outcome.State == gh.StateOpen {
 			// Still open: it never left. Keep it, and let the absence cap
 			// retire it if it stays outside the search.
 			continue
 		}
 		delete(m.absent, p.Key())
 		finished[p.Key()] = true
-		events = append(events, gh.ClosureEvent(p, state, now))
+		events = append(events, gh.ClosureEvent(p, outcome, now))
 	}
 	if len(finished) == 0 {
 		return m

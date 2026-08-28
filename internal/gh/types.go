@@ -199,6 +199,7 @@ type PR struct {
 	Pushes         []Push     // the last twenty commits, dated
 	State          State      // MERGED or CLOSED for a finished pull request
 	FinishedAt     time.Time  // when it was merged or closed
+	FinishedBy     string     // who merged or closed it
 
 	Labels    []Label
 	Reviewers []Reviewer

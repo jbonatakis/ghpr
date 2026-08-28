@@ -403,8 +403,14 @@ func convert(n prNode, viewer string) PR {
 	switch n.State {
 	case "MERGED":
 		p.State, p.FinishedAt = StateMerged, parseTime(n.MergedAt)
+		p.FinishedBy = n.MergedBy.Login
 	case "CLOSED":
 		p.State, p.FinishedAt = StateClosed, parseTime(n.ClosedAt)
+		// GitHub names the merger outright but not the closer, so a plain
+		// close is read off the last close on the timeline.
+		if len(n.TimelineItems.Nodes) > 0 {
+			p.FinishedBy = n.TimelineItems.Nodes[0].Actor.Login
+		}
 	}
 
 	// Reviews already given win over a still-open request from the same person.
