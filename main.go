@@ -30,6 +30,7 @@ func main() {
 		seed     = flag.Duration("seed", time.Hour, "fill the activity feed in from this far back at startup (0 to start blank)")
 		api      = flag.String("api", "", "GraphQL endpoint, for GitHub Enterprise Server")
 		once     = flag.Bool("once", false, "print a one-shot plain-text snapshot and exit")
+		why      = flag.Bool("why-seed", false, "explain what the startup backfill can and cannot see, and exit")
 		showCfg  = flag.Bool("config", false, "print the config file path and exit")
 		links    = flag.Bool("links", true, "make pull request references clickable (-links=false to disable)")
 		showVer  = flag.Bool("version", false, "print version and exit")
@@ -99,6 +100,12 @@ func main() {
 		Seed:     *seed,
 	}
 
+	if *why {
+		if err := explainSeed(cfg); err != nil {
+			fail(err)
+		}
+		return
+	}
 	if *once {
 		if err := snapshot(cfg); err != nil {
 			fail(err)
@@ -161,6 +168,119 @@ func parseMode(s string) (gh.Mode, error) {
 		return gh.ModeInvolved, nil
 	}
 	return 0, fmt.Errorf("unknown mode %q: want authored, review-requested, or involved", s)
+}
+
+// explainSeed accounts for the startup backfill pull request by pull request.
+//
+// A thin feed has two very different causes — a search whose pull requests
+// genuinely had a quiet month, or activity the one query cannot see — and from
+// the outside they look identical. This distinguishes them: every timestamp the
+// seed reads, whether it landed inside the window, and how much of the
+// conversation was never fetched to be dated in the first place.
+func explainSeed(cfg ui.Config) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+
+	res, err := cfg.Client.Fetch(ctx, cfg.Mode.Query(cfg.Extra), cfg.Max)
+	if err != nil {
+		return err
+	}
+	window := cfg.Seed
+	if window <= 0 {
+		window = time.Hour
+	}
+	since := res.FetchedAt.Add(-window)
+
+	fmt.Printf("%s · %s · %d open pull requests\n", res.Viewer, cfg.Mode, len(res.PRs))
+	fmt.Printf("seed window %s — nothing before %s can be reached\n",
+		window, since.Local().Format("2006-01-02 15:04"))
+	if !res.Complete {
+		fmt.Printf("NOTE: the search was cut short by -max %d, so this is not the whole list\n", cfg.Max)
+	}
+	fmt.Println()
+
+	when := func(at time.Time) string {
+		if at.IsZero() {
+			return "        not reported by the API"
+		}
+		mark := "outside"
+		if !at.Before(since) {
+			mark = "IN     "
+		}
+		return fmt.Sprintf("%6s  %s  %s", age(res.FetchedAt.Sub(at)), mark,
+			at.Local().Format("2006-01-02 15:04"))
+	}
+
+	var (
+		seeded, contributing int
+		unfetched, inThreads int
+	)
+	for _, p := range res.PRs {
+		events := gh.Seed([]gh.PR{p}, since, res.Viewer)
+		seeded += len(events)
+		if len(events) > 0 {
+			contributing++
+		}
+		if missed := p.IssueComments - len(p.RecentComments); missed > 0 {
+			unfetched += missed
+		}
+		inThreads += p.ReviewComments
+
+		fmt.Printf("%-52s %d seeded\n", p.Key(), len(events))
+		fmt.Printf("    opened          %s\n", when(p.CreatedAt))
+		fmt.Printf("    head commit     %s\n", when(p.PushedAt))
+		fmt.Printf("    newest check    %s\n", when(p.ChecksAt))
+		for _, r := range p.Reviewers {
+			if r.At.IsZero() {
+				continue
+			}
+			fmt.Printf("    review %-9s%s\n", trunc(r.Login, 9), when(r.At))
+		}
+		for _, c := range p.RecentComments {
+			fmt.Printf("    comment %-8s%s\n", trunc(c.By, 8), when(c.At))
+		}
+		if missed := p.IssueComments - len(p.RecentComments); missed > 0 {
+			fmt.Printf("    %d older conversation %s never fetched (the query takes the newest 3)\n",
+				missed, plural(missed, "comment"))
+		}
+		if p.ReviewComments > 0 {
+			fmt.Printf("    %d %s inside %s — no dates in this query, so none can be seeded\n",
+				p.ReviewComments, plural(p.ReviewComments, "comment"), plural(p.TotalThreads, "review thread"))
+		}
+		fmt.Println()
+	}
+
+	fmt.Printf("%d events seeded, from %d of %d pull requests\n", seeded, contributing, len(res.PRs))
+	fmt.Printf("out of reach: %d older conversation comments, %d review-thread comments\n",
+		unfetched, inThreads)
+	fmt.Println()
+	if contributing == 0 {
+		fmt.Println("Nothing at all landed in the window. Either the search really has been")
+		fmt.Println("quiet that long, or you want a different -mode: authored covers only your")
+		fmt.Println("own pull requests, while involved covers everything you have touched.")
+	} else if unfetched+inThreads > seeded {
+		fmt.Println("More is out of reach than was seeded. A wider -seed will not help with")
+		fmt.Println("that; it is the per-pull-request caps, not the window. Fetching it would")
+		fmt.Println("take a second, costlier query at startup.")
+	} else {
+		fmt.Println("Almost everything datable was already seeded. A wider -seed only helps if")
+		fmt.Println("the lines above say \"outside\"; otherwise the search has simply been quiet.")
+	}
+	return nil
+}
+
+func plural(n int, unit string) string {
+	if n == 1 {
+		return unit
+	}
+	return unit + "s"
+}
+
+func trunc(s string, w int) string {
+	if len(s) > w {
+		return s[:w]
+	}
+	return s
 }
 
 // snapshot prints one plain-text listing, for pipes, cron and scripts.

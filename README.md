@@ -56,6 +56,7 @@ ghpr -once                            # plain-text snapshot, no TUI
 | `-seed` | `1h` | fill the activity feed in from this far back at startup (`0` starts it empty) |
 | `-links` | `true` | clickable pull request references (`-links=false` to disable) |
 | `-once` | – | print a snapshot and exit — good for scripts and cron |
+| `-why-seed` | – | account for the startup backfill pull request by pull request, and exit |
 
 ## Keys
 
@@ -300,6 +301,28 @@ whatever the window:
 - `! now conflicting` — `mergeable` is a current state with no timestamp.
 - `◷ review requested` — `reviewRequests` carries no date; only GitHub's
   timeline API has one, and that is a query per pull request.
+
+If the feed comes up thinner than you expected, `-why-seed` says why, and is
+the fastest way to tell a genuinely quiet month from activity the query cannot
+see:
+
+```sh
+ghpr -why-seed -seed 720h
+```
+
+It prints every timestamp the seed reads for each pull request, whether that
+one landed inside the window, and how much of the conversation was never
+fetched to be dated at all — ending with the arithmetic:
+
+```
+28 events seeded, from 11 of 11 pull requests
+out of reach: 14 older conversation comments, 68 review-thread comments
+```
+
+Two very different diagnoses come out of that. If the lines say `outside`, a
+wider `-seed` helps. If they say `not reported by the API`, or the out-of-reach
+tally dwarfs what was seeded, the window is not the constraint and widening it
+will change nothing.
 
 Nothing is guessed to fill those gaps: every seeded line has an API timestamp
 behind it, and what cannot be dated is simply absent. Seeded comments are dated
