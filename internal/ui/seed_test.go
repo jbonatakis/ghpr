@@ -224,3 +224,113 @@ func TestTidyDuration(t *testing.T) {
 		}
 	}
 }
+
+// A feed filled in behind a closed pane is indistinguishable from one that was
+// never filled in at all.
+func TestASeededFeedOpensItself(t *testing.T) {
+	now := time.Now()
+	m := newSeeding(t, time.Hour)
+	if m.showEvents {
+		t.Fatal("the pane should start closed")
+	}
+
+	m = update(m, fetchDoneMsg{seq: m.fetchSeq, res: history(now)})
+	if !m.showEvents {
+		t.Error("a seeded feed left itself hidden")
+	}
+	if m.eventsFocus {
+		t.Error("it should show the feed, not steal the keys")
+	}
+}
+
+func TestAQuietWindowDoesNotOpenThePane(t *testing.T) {
+	now := time.Now()
+	quiet := history(now)
+	// Everything on it happened long before the window.
+	quiet.PRs[0].CreatedAt = now.Add(-30 * 24 * time.Hour)
+	quiet.PRs[0].PushedAt = now.Add(-29 * 24 * time.Hour)
+	quiet.PRs[0].ChecksAt = now.Add(-29 * 24 * time.Hour)
+	quiet.PRs[0].Reviewers = nil
+	quiet.PRs[0].RecentComments = nil
+
+	m := newSeeding(t, time.Hour)
+	m = update(m, fetchDoneMsg{seq: m.fetchSeq, res: quiet})
+	if len(m.events) != 0 {
+		t.Fatalf("the window should have been quiet, got %d events", len(m.events))
+	}
+	if m.showEvents {
+		t.Error("opening onto nothing is just a pane in the way")
+	}
+}
+
+// "watching for changes" alone cannot tell you whether the backfill ran and
+// found nothing or never ran at all.
+func TestTheEmptyFeedSaysWhetherItLookedBack(t *testing.T) {
+	now := time.Now()
+	quiet := history(now)
+	quiet.PRs[0].CreatedAt = now.Add(-30 * 24 * time.Hour)
+	quiet.PRs[0].PushedAt = now.Add(-29 * 24 * time.Hour)
+	quiet.PRs[0].ChecksAt = now.Add(-29 * 24 * time.Hour)
+	quiet.PRs[0].Reviewers = nil
+	quiet.PRs[0].RecentComments = nil
+
+	m := newSeeding(t, time.Hour)
+	m = update(m, fetchDoneMsg{seq: m.fetchSeq, res: quiet})
+	m.showEvents = true
+	if out := feedText(m); !strings.Contains(out, "nothing in the last 1h") {
+		t.Errorf("the empty feed does not say it looked back:\n%s", out)
+	}
+
+	// With no window asked for, there is nothing to report having looked at.
+	plain := newLoaded(t, 140, 40)
+	plain.showEvents = true
+	out := feedText(plain)
+	if strings.Contains(out, "nothing in the last") {
+		t.Errorf("a feed that was never seeded claims it looked back:\n%s", out)
+	}
+	if !strings.Contains(out, "watching for changes") {
+		t.Errorf("the plain empty state changed:\n%s", out)
+	}
+}
+
+// End to end over a real captured payload: the seed has to survive the whole
+// path from GraphQL JSON through convert, not just hand-built structs. The
+// fixture predates committedDate and completedAt, so pushes and checks are
+// absent from it — everything else has to come through.
+func TestSeedingARealPayload(t *testing.T) {
+	res := loadFixture(t)
+	if len(res.PRs) == 0 {
+		t.Fatal("fixture has no pull requests")
+	}
+
+	var comments int
+	for _, p := range res.PRs {
+		comments += len(p.RecentComments)
+	}
+	if comments == 0 {
+		t.Error("convert kept no dated comments from a real payload")
+	}
+
+	// Wide enough to reach everything in a fixture captured months ago.
+	got := gh.Seed(res.PRs, time.Now().Add(-100000*time.Hour), res.Viewer)
+	if len(got) == 0 {
+		t.Fatal("a real payload seeded nothing at all")
+	}
+
+	kinds := map[gh.EventKind]int{}
+	for _, e := range got {
+		kinds[e.Kind]++
+		if e.At.IsZero() {
+			t.Errorf("%q was seeded with no timestamp", e.Text)
+		}
+		if e.Key == "" {
+			t.Errorf("%q was seeded without a pull request", e.Text)
+		}
+	}
+	for _, want := range []gh.EventKind{gh.EventOpened, gh.EventComment, gh.EventReview} {
+		if kinds[want] == 0 {
+			t.Errorf("nothing of kind %v came out of a real payload", want)
+		}
+	}
+	t.Logf("seeded %d events from %d pull requests: %v", len(got), len(res.PRs), kinds)
+}

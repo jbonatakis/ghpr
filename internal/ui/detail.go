@@ -161,7 +161,7 @@ func (m Model) eventsView() string {
 	// view of the current mode. Switching mode or hiding a pull request does
 	// not un-happen what it did.
 	if len(m.events) == 0 {
-		b.WriteString(" " + stMuted.Render("watching for changes…") + "\n")
+		b.WriteString(" " + stMuted.Render(m.emptyFeedText()) + "\n")
 		for i := 2; i <= eventRows; i++ {
 			b.WriteString("\n")
 		}
@@ -187,6 +187,17 @@ func (m Model) eventsView() string {
 		b.WriteString("\n")
 	}
 	return b.String()
+}
+
+// emptyFeedText separates a feed that was never filled in from one that was
+// and found the window quiet. The two look identical otherwise, and which of
+// them you are looking at is the first thing anyone wants to know when the
+// backfill appears to have done nothing.
+func (m Model) emptyFeedText() string {
+	if m.seeded && m.cfg.Seed > 0 {
+		return fmt.Sprintf("nothing in the last %s · watching for changes…", tidyDuration(m.cfg.Seed))
+	}
+	return "watching for changes…"
 }
 
 // eventsTitle is the pane's divider bar. While the feed has the keys it says

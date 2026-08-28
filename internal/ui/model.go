@@ -451,6 +451,12 @@ func (m Model) applyFetch(msg fetchDoneMsg) (tea.Model, tea.Cmd) {
 		// where the reconstruction stops and the watching starts.
 		if seed := gh.Seed(next, msg.res.FetchedAt.Add(-m.cfg.Seed), msg.res.Viewer); len(seed) > 0 {
 			events = append(seed, gh.SessionEvent(msg.res.FetchedAt))
+			// Showing it is the whole point. The pane starts closed, so a feed
+			// filled in behind it answers a question the user cannot see it
+			// answering — and looks exactly like the feature not working.
+			// Only when there is something to show: opening onto "nothing
+			// happened" would just be a pane in the way.
+			m.showEvents = true
 		}
 	}
 	events = append(events, gh.Diff(prev, next, gh.DiffOpts{
