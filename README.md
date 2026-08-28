@@ -278,26 +278,31 @@ watched change between two of its own polls. Below it is reconstruction: the
 same one search, read for the timestamps GitHub attaches to what it returns.
 Both are real, but they are not the same kind of claim, and the line says so.
 
-It costs nothing. The dates come from fields the query was already fetching,
-plus two scalars (`committedDate` on the head commit, `completedAt` on each
-check), and GraphQL bills for nodes rather than scalar fields.
+It costs extra, once. The two searches run at launch and are far heavier than
+a poll — nested thread comments multiply quickly — so pages are small and the
+work is done before the dashboard settles. Across a session left open for hours
+it is noise; `-why-seed` prints what it actually cost on your account, and
+`-seed 0` skips it entirely.
 
-**Widening the window has a ceiling.** `-seed 720h` does not fetch thirty days
-of history; it stops excluding what the one snapshot already contains, which is
-at most a handful of dated things per pull request — when it was opened, its
-newest three conversation comments, one review per reviewer, its head commit,
-its last check. Past that point a longer window adds nothing, because there is
-nothing more in the response to date. If a wide window looks thin, the per-pull-
-request caps are the reason, not the window.
+The backfill is **not** the polling query. It is a second, deliberately
+expensive pair of searches that run once at launch and never again, so the
+thirty-second poll stays at 2 points while the backfill gets to see an actual
+month:
 
-**It is a floor, not a record.** One search returns the newest three
-conversation comments per pull request and one review per reviewer, so a busy
-hour is under-reported — and comments inside review threads carry no dates in
-this query at all, so none of them appear. Three things cannot be seeded
-whatever the window:
+- **Pull requests that already finished.** The dashboard is `is:open`, so a
+  backfill using it would describe your month with everything you merged left
+  out. A second search covers what closed inside the window, and those get
+  `✔ merged` and `× closed` lines of their own.
+- **Comments inside review threads**, with the dates that let them be placed.
+  Where review happens inline rather than in the conversation tab, this is the
+  discussion — the polling query can only count it.
+- **Twenty conversation comments** per pull request rather than three,
+  **every review** rather than the latest per reviewer, and **twenty commits**
+  rather than the head alone, so a day of pushes reads as a day of pushes.
 
-- `✔ merged` / `× closed` — the search is `is:open`, so those pull requests are
-  not in the response to read dates from.
+Two things still cannot be seeded at any window, because nothing in any
+response dates them:
+
 - `! now conflicting` — `mergeable` is a current state with no timestamp.
 - `◷ review requested` — `reviewRequests` carries no date; only GitHub's
   timeline API has one, and that is a query per pull request.

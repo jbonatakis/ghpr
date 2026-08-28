@@ -33,7 +33,22 @@ func Seed(prs []PR, since time.Time, viewer string) []Event {
 
 		add(p.CreatedAt, EventOpened, p.Author, "opened")
 
-		for _, r := range p.Reviewers {
+		// A finished pull request only ever reaches here from the backfill's
+		// second search; the dashboard's own is open-only.
+		switch p.State {
+		case StateMerged:
+			add(p.FinishedAt, EventMerged, "", "merged")
+		case StateClosed:
+			add(p.FinishedAt, EventClosed, "", "closed")
+		}
+
+		// Every review where the backfill fetched them, one per reviewer where
+		// it did not. A reviewer who came back three times is three events.
+		reviews := p.AllReviews
+		if len(reviews) == 0 {
+			reviews = p.Reviewers
+		}
+		for _, r := range reviews {
 			switch r.State {
 			case "APPROVED":
 				add(r.At, EventReview, r.Login, "approved")
@@ -59,14 +74,28 @@ func Seed(prs []PR, since time.Time, viewer string) []Event {
 			// author, and saying so is strictly more useful.
 			add(c.At, EventComment, c.By, "new comment")
 		}
+		// Where review happens inline rather than in the conversation tab,
+		// these are the discussion, and the polling query can only count them.
+		for _, c := range p.ThreadComments {
+			if c.Mention && viewer != "" {
+				continue // already carried by the louder line above
+			}
+			add(c.At, EventComment, c.By, "review comment")
+		}
 
-		add(p.PushedAt, EventPush, p.PushedBy, "new commits")
+		if len(p.Pushes) > 0 {
+			for _, c := range p.Pushes {
+				add(c.At, EventPush, c.By, "new commit")
+			}
+		} else {
+			add(p.PushedAt, EventPush, p.PushedBy, "new commits")
+		}
 		if p.ChecksState != CheckNone {
 			add(p.ChecksAt, EventChecks, "", "checks "+p.ChecksState.String())
 		}
 	}
 
-	sortEvents(out)
+	SortByTime(out)
 	return out
 }
 
@@ -77,10 +106,14 @@ func SessionEvent(at time.Time) Event {
 	return Event{At: at, Kind: EventSessionStart, Text: "ghpr started"}
 }
 
-// sortEvents puts a seeded batch in the order it happened, so the feed reads
-// the same way whether a line was reconstructed or observed. Ties break on the
+// SortByTime puts events in the order they happened, so the feed reads the
+// same way whether a line was reconstructed or observed. Ties break on the
 // pull request, so the result does not depend on the order the pages arrived.
-func sortEvents(events []Event) {
+//
+// The feed cannot simply append: the backfill is slow and lands long after the
+// live events it predates, and two searches come back in whichever order they
+// finish. Order is restored rather than assumed.
+func SortByTime(events []Event) {
 	sort.SliceStable(events, func(i, j int) bool {
 		a, b := events[i], events[j]
 		if !a.At.Equal(b.At) {

@@ -162,9 +162,38 @@ type prNode struct {
 			IsOutdated bool `json:"isOutdated"`
 			Comments   struct {
 				TotalCount int `json:"totalCount"`
+				// Requested only by the backfill query. The ordinary poll takes
+				// the count alone, which is why it can say how many review
+				// comments there are and never when any of them was written.
+				Nodes []struct {
+					CreatedAt string `json:"createdAt"`
+					BodyText  string `json:"bodyText"`
+					Author    struct {
+						Login string `json:"login"`
+					} `json:"author"`
+				} `json:"nodes"`
 			} `json:"comments"`
 		} `json:"nodes"`
 	} `json:"reviewThreads"`
+
+	// State, MergedAt and ClosedAt are only populated for the backfill's
+	// second search, the one that looks at what has already finished.
+	State    string `json:"state"`
+	MergedAt string `json:"mergedAt"`
+	ClosedAt string `json:"closedAt"`
+
+	// Reviews is every review, where LatestReviews is one per reviewer. A
+	// reviewer who came back three times is three events, not one.
+	Reviews struct {
+		Nodes []struct {
+			State  string `json:"state"`
+			Author struct {
+				Login string `json:"login"`
+			} `json:"author"`
+			SubmittedAt string `json:"submittedAt"`
+			BodyText    string `json:"bodyText"`
+		} `json:"nodes"`
+	} `json:"reviews"`
 	Commits struct {
 		Nodes []struct {
 			Commit struct {
@@ -197,3 +226,74 @@ type prNode struct {
 		} `json:"nodes"`
 	} `json:"commits"`
 }
+
+// backfillQuery is the startup-only search behind -seed. It asks for what the
+// polling query deliberately does not: every review rather than the latest per
+// reviewer, twenty conversation comments rather than three, the comments
+// inside review threads with the dates that make them placeable, and twenty
+// commits rather than the head alone.
+//
+// It is expensive, and that is the whole design. It runs once per launch
+// instead of every thirty seconds, so the polling query stays cheap while the
+// backfill gets to see an actual month.
+const backfillQuery = `
+query($q: String!, $n: Int!, $after: String) {
+  viewer { login }
+  rateLimit { limit remaining cost resetAt }
+  search(query: $q, type: ISSUE, first: $n, after: $after) {
+    issueCount
+    pageInfo { hasNextPage endCursor }
+    nodes {
+      __typename
+      ... on PullRequest {
+        id
+        number
+        title
+        url
+        isDraft
+        bodyText
+        state
+        createdAt
+        updatedAt
+        mergedAt
+        closedAt
+        additions
+        deletions
+        changedFiles
+        mergeable
+        reviewDecision
+        headRefName
+        baseRefName
+        repository { nameWithOwner }
+        author { login }
+        comments(last: 20) { totalCount nodes { author { login } createdAt bodyText } }
+        labels(first: 10) { nodes { name color } }
+        reviewRequests(first: 20) {
+          nodes {
+            requestedReviewer {
+              __typename
+              ... on User { login }
+              ... on Team { name }
+            }
+          }
+        }
+        reviews(last: 20) { nodes { state author { login } submittedAt bodyText } }
+        latestReviews(first: 20) { nodes { state author { login } submittedAt bodyText } }
+        reviewThreads(first: 50) {
+          totalCount
+          nodes {
+            isResolved
+            isOutdated
+            comments(last: 20) {
+              totalCount
+              nodes { createdAt bodyText author { login } }
+            }
+          }
+        }
+        commits(last: 20) {
+          nodes { commit { oid committedDate author { user { login } } } }
+        }
+      }
+    }
+  }
+}`

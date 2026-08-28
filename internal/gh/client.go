@@ -70,16 +70,36 @@ func (m Mode) String() string {
 func (m Mode) Query(extra string) string {
 	var b strings.Builder
 	b.WriteString("is:open is:pr archived:false ")
-	switch m {
-	case ModeReviewRequested:
-		b.WriteString("review-requested:@me ")
-	case ModeInvolved:
-		b.WriteString("involves:@me ")
-	default:
-		b.WriteString("author:@me ")
-	}
+	b.WriteString(m.qualifier())
 	b.WriteString(strings.TrimSpace(extra))
 	return strings.TrimSpace(b.String())
+}
+
+// ClosedQuery finds the pull requests that finished recently.
+//
+// The dashboard itself only ever wants open ones, but a backfill that skips
+// what has already been merged is describing a month with its best days left
+// out — for anyone who ships, that is most of the activity there was.
+//
+// GitHub's search dates are days, not instants, so this rounds the window down
+// to midnight and lets Seed discard whatever falls outside the real one.
+func (m Mode) ClosedQuery(extra string, since time.Time) string {
+	var b strings.Builder
+	b.WriteString("is:pr archived:false is:closed ")
+	b.WriteString(m.qualifier())
+	b.WriteString("updated:>=" + since.UTC().Format("2006-01-02") + " ")
+	b.WriteString(strings.TrimSpace(extra))
+	return strings.TrimSpace(b.String())
+}
+
+func (m Mode) qualifier() string {
+	switch m {
+	case ModeReviewRequested:
+		return "review-requested:@me "
+	case ModeInvolved:
+		return "involves:@me "
+	}
+	return "author:@me "
 }
 
 func Modes() []Mode { return []Mode{ModeAuthored, ModeReviewRequested, ModeInvolved} }
@@ -89,7 +109,18 @@ func (c *Client) Fetch(ctx context.Context, search string, max int) (Result, err
 	// Deliberately modest. The nested review threads and check contexts make
 	// each row expensive, and asking for too many at once is what pushes the
 	// search past GitHub's internal timeout (surfacing as a 502).
-	const pageSize = 25
+	return c.search(ctx, searchQuery, search, max, 25)
+}
+
+// Backfill runs the startup search that fills the activity feed in. It asks
+// for everything the polling query cannot afford, so its pages are small: the
+// nested thread comments multiply, and a page of twenty-five would routinely
+// time out on GitHub's side.
+func (c *Client) Backfill(ctx context.Context, search string, max int) (Result, error) {
+	return c.search(ctx, backfillQuery, search, max, 10)
+}
+
+func (c *Client) search(ctx context.Context, doc, search string, max, pageSize int) (Result, error) {
 	var (
 		res    Result
 		cursor *string
@@ -107,7 +138,7 @@ func (c *Client) Fetch(ctx context.Context, search string, max int) (Result, err
 		}
 
 		var out graphQLResponse
-		if err := c.do(ctx, searchQuery, vars, &out); err != nil {
+		if err := c.do(ctx, doc, vars, &out); err != nil {
 			return res, err
 		}
 		if len(out.Errors) > 0 {
@@ -234,11 +265,34 @@ func convert(n prNode, viewer string) PR {
 		if !t.IsResolved && !t.IsOutdated {
 			p.UnresolvedThreads++
 		}
+		for _, c := range t.Comments.Nodes {
+			if c.Author.Login == "" {
+				continue
+			}
+			p.ThreadComments = append(p.ThreadComments, Comment{
+				By: c.Author.Login, At: parseTime(c.CreatedAt),
+			})
+		}
 	}
 	p.ThreadsTruncated = p.TotalThreads > len(n.ReviewThreads.Nodes)
 
 	for _, l := range n.Labels.Nodes {
 		p.Labels = append(p.Labels, Label{Name: l.Name, Color: l.Color})
+	}
+
+	for _, r := range n.Reviews.Nodes {
+		if r.Author.Login == "" {
+			continue
+		}
+		p.AllReviews = append(p.AllReviews, Reviewer{
+			Login: r.Author.Login, State: r.State, At: parseTime(r.SubmittedAt),
+		})
+	}
+	switch n.State {
+	case "MERGED":
+		p.State, p.FinishedAt = StateMerged, parseTime(n.MergedAt)
+	case "CLOSED":
+		p.State, p.FinishedAt = StateClosed, parseTime(n.ClosedAt)
 	}
 
 	// Reviews already given win over a still-open request from the same person.
@@ -289,14 +343,23 @@ func convert(n prNode, viewer string) PR {
 	noteMentions(&p, n, viewer)
 
 	if len(n.Commits.Nodes) > 0 {
-		p.HeadOID = n.Commits.Nodes[0].Commit.OID
-		p.PushedBy = n.Commits.Nodes[0].Commit.Author.User.Login
+		for _, c := range n.Commits.Nodes {
+			if at := parseTime(c.Commit.CommittedDate); !at.IsZero() {
+				p.Pushes = append(p.Pushes, Push{By: c.Commit.Author.User.Login, At: at})
+			}
+		}
+		// commits(last: n) returns oldest first, so the head is the last one.
+		// With the polling query's last: 1 the two are the same element; with
+		// the backfill's last: 20 they are emphatically not.
+		head := n.Commits.Nodes[len(n.Commits.Nodes)-1].Commit
+		p.HeadOID = head.OID
+		p.PushedBy = head.Author.User.Login
 		// The commit's own date, not when it was pushed. GitHub's pushedDate is
 		// deprecated and frequently null, and this errs the safe way: a commit
 		// written days ago and pushed a minute ago is left out of the seed
 		// rather than announced as something that never happened.
-		p.PushedAt = parseTime(n.Commits.Nodes[0].Commit.CommittedDate)
-		if roll := n.Commits.Nodes[0].Commit.StatusCheckRollup; roll != nil {
+		p.PushedAt = parseTime(head.CommittedDate)
+		if roll := n.Commits.Nodes[len(n.Commits.Nodes)-1].Commit.StatusCheckRollup; roll != nil {
 			for _, c := range roll.Contexts.Nodes {
 				chk := Check{Name: c.Name, URL: c.DetailsURL, Raw: c.Conclusion}
 				if c.Typename == "StatusContext" {
@@ -377,6 +440,23 @@ func noteMentions(p *PR, n prNode, viewer string) {
 	}
 	for _, r := range n.LatestReviews.Nodes {
 		note(r.Author.Login, parseTime(r.SubmittedAt), r.BodyText)
+	}
+	// Only the backfill fills these, and they are where most review talk is.
+	for _, r := range n.Reviews.Nodes {
+		note(r.Author.Login, parseTime(r.SubmittedAt), r.BodyText)
+	}
+	for _, t := range n.ReviewThreads.Nodes {
+		for _, c := range t.Comments.Nodes {
+			at := parseTime(c.CreatedAt)
+			if !note(c.Author.Login, at, c.BodyText) {
+				continue
+			}
+			for i := range p.ThreadComments {
+				if p.ThreadComments[i].By == c.Author.Login && p.ThreadComments[i].At.Equal(at) {
+					p.ThreadComments[i].Mention = true
+				}
+			}
+		}
 	}
 }
 

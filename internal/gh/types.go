@@ -64,6 +64,14 @@ type Comment struct {
 	Mention bool
 }
 
+// Push is one commit on the branch, dated. The polling query fetches only the
+// head; the backfill fetches the last twenty, so a day of work reads as a day
+// of work rather than a single line.
+type Push struct {
+	By string
+	At time.Time
+}
+
 // Mention is one @mention of the viewer: when it was written, and by whom.
 type Mention struct {
 	By string
@@ -182,6 +190,15 @@ type PR struct {
 	Mentions       []Mention
 	PushedAt       time.Time // the head commit's own commit date
 	ChecksAt       time.Time // when the newest check on that commit finished
+
+	// Filled in only by Backfill, which asks for far more than a poll can
+	// afford. Where these are present they are what Seed reads, because the
+	// fields above are the same history seen through a keyhole.
+	ThreadComments []Comment  // comments inside review threads, with dates
+	AllReviews     []Reviewer // every review, not the latest per reviewer
+	Pushes         []Push     // the last twenty commits, dated
+	State          State      // MERGED or CLOSED for a finished pull request
+	FinishedAt     time.Time  // when it was merged or closed
 
 	Labels    []Label
 	Reviewers []Reviewer

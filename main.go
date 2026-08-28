@@ -181,19 +181,29 @@ func explainSeed(cfg ui.Config) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
 
-	res, err := cfg.Client.Fetch(ctx, cfg.Mode.Query(cfg.Extra), cfg.Max)
-	if err != nil {
-		return err
-	}
 	window := cfg.Seed
 	if window <= 0 {
 		window = time.Hour
 	}
-	since := res.FetchedAt.Add(-window)
+	since := time.Now().Add(-window)
 
-	fmt.Printf("%s · %s · %d open pull requests\n", res.Viewer, cfg.Mode, len(res.PRs))
+	res, err := cfg.Client.Backfill(ctx, cfg.Mode.Query(cfg.Extra), cfg.Max)
+	if err != nil {
+		return err
+	}
+	open := len(res.PRs)
+	if done, err := cfg.Client.Backfill(ctx, cfg.Mode.ClosedQuery(cfg.Extra, since), cfg.Max); err != nil {
+		fmt.Printf("NOTE: the closed-pull-request search failed (%s), so anything\n"+
+			"      merged or closed in the window is missing from this account\n\n",
+			gh.CleanMessage(err.Error(), 80))
+	} else {
+		res.PRs = append(res.PRs, done.PRs...)
+	}
+
+	fmt.Printf("%s · %s · %d open and %d recently closed pull requests\n",
+		res.Viewer, cfg.Mode, open, len(res.PRs)-open)
 	fmt.Printf("seed window %s — nothing before %s can be reached\n",
-		window, since.Local().Format("2006-01-02 15:04"))
+		tidy(window), since.Local().Format("2006-01-02 15:04"))
 	if !res.Complete {
 		fmt.Printf("NOTE: the search was cut short by -max %d, so this is not the whole list\n", cfg.Max)
 	}
@@ -213,7 +223,7 @@ func explainSeed(cfg ui.Config) error {
 
 	var (
 		seeded, contributing int
-		unfetched, inThreads int
+		unfetched            int
 	)
 	for _, p := range res.PRs {
 		events := gh.Seed([]gh.PR{p}, since, res.Viewer)
@@ -224,17 +234,30 @@ func explainSeed(cfg ui.Config) error {
 		if missed := p.IssueComments - len(p.RecentComments); missed > 0 {
 			unfetched += missed
 		}
-		inThreads += p.ReviewComments
 
-		fmt.Printf("%-52s %d seeded\n", p.Key(), len(events))
+		what := "open"
+		if p.State != "" {
+			what = strings.ToLower(string(p.State))
+		}
+		fmt.Printf("%-46s %-7s %d seeded\n", p.Key(), what, len(events))
 		fmt.Printf("    opened          %s\n", when(p.CreatedAt))
 		fmt.Printf("    head commit     %s\n", when(p.PushedAt))
 		fmt.Printf("    newest check    %s\n", when(p.ChecksAt))
-		for _, r := range p.Reviewers {
+		if !p.FinishedAt.IsZero() {
+			fmt.Printf("    %-16s%s\n", strings.ToLower(string(p.State)), when(p.FinishedAt))
+		}
+		reviews := p.AllReviews
+		if len(reviews) == 0 {
+			reviews = p.Reviewers
+		}
+		for _, r := range reviews {
 			if r.At.IsZero() {
 				continue
 			}
 			fmt.Printf("    review %-9s%s\n", trunc(r.Login, 9), when(r.At))
+		}
+		for _, c := range p.Pushes {
+			fmt.Printf("    commit %-9s%s\n", trunc(c.By, 9), when(c.At))
 		}
 		for _, c := range p.RecentComments {
 			fmt.Printf("    comment %-8s%s\n", trunc(c.By, 8), when(c.At))
@@ -243,28 +266,30 @@ func explainSeed(cfg ui.Config) error {
 			fmt.Printf("    %d older conversation %s never fetched (the query takes the newest 3)\n",
 				missed, plural(missed, "comment"))
 		}
-		if p.ReviewComments > 0 {
-			fmt.Printf("    %d %s inside %s — no dates in this query, so none can be seeded\n",
-				p.ReviewComments, plural(p.ReviewComments, "comment"), plural(p.TotalThreads, "review thread"))
+		for _, c := range p.ThreadComments {
+			fmt.Printf("    review comment %-1s%s\n", "", when(c.At))
+		}
+		if missed := p.ReviewComments - len(p.ThreadComments); missed > 0 {
+			fmt.Printf("    %d further review-thread %s beyond what one page carries\n",
+				missed, plural(missed, "comment"))
 		}
 		fmt.Println()
 	}
 
 	fmt.Printf("%d events seeded, from %d of %d pull requests\n", seeded, contributing, len(res.PRs))
-	fmt.Printf("out of reach: %d older conversation comments, %d review-thread comments\n",
-		unfetched, inThreads)
+	if unfetched > 0 {
+		fmt.Printf("out of reach: %d conversation comments beyond the newest twenty\n", unfetched)
+	}
+	fmt.Printf("this account cost %d rate-limit points\n", res.RateLimit.Cost)
 	fmt.Println()
 	if contributing == 0 {
 		fmt.Println("Nothing at all landed in the window. Either the search really has been")
 		fmt.Println("quiet that long, or you want a different -mode: authored covers only your")
 		fmt.Println("own pull requests, while involved covers everything you have touched.")
-	} else if unfetched+inThreads > seeded {
-		fmt.Println("More is out of reach than was seeded. A wider -seed will not help with")
-		fmt.Println("that; it is the per-pull-request caps, not the window. Fetching it would")
-		fmt.Println("take a second, costlier query at startup.")
 	} else {
-		fmt.Println("Almost everything datable was already seeded. A wider -seed only helps if")
-		fmt.Println("the lines above say \"outside\"; otherwise the search has simply been quiet.")
+		fmt.Println("Lines marked \"outside\" would come back with a wider -seed. Lines marked")
+		fmt.Println("\"not reported\" never had a date to begin with and no window will reach")
+		fmt.Println("them — a review request and a conflict appearing are the two that never do.")
 	}
 	return nil
 }
@@ -274,6 +299,16 @@ func plural(n int, unit string) string {
 		return unit
 	}
 	return unit + "s"
+}
+
+// tidy drops the zero tail Go leaves on a round duration: 1h, not 1h0m0s.
+func tidy(d time.Duration) string {
+	s := d.String()
+	s = strings.TrimSuffix(s, "0s")
+	if strings.HasSuffix(s, "h0m") {
+		s = strings.TrimSuffix(s, "0m")
+	}
+	return s
 }
 
 func trunc(s string, w int) string {

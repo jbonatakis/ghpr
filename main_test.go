@@ -124,8 +124,8 @@ func TestWhySeedExplainsAQuietWindow(t *testing.T) {
 	out := capture(t, func() error { return explainSeed(cfg) })
 
 	for _, want := range []string{
-		"open pull requests",
-		"seed window 1h",
+		"pull requests",
+		"seed window 1h —",
 		"0 events seeded, from 0 of",
 		"Nothing at all landed in the window",
 	} {

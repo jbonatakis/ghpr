@@ -178,10 +178,11 @@ type Model struct {
 	// pull requests from the mode the user just left.
 	fetchSeq int
 
-	spin   spinner.Model
-	now    time.Time
-	width  int
-	height int
+	spin      spinner.Model
+	now       time.Time
+	startedAt time.Time
+	width     int
+	height    int
 }
 
 // New builds the initial model.
@@ -206,6 +207,7 @@ func New(cfg Config) Model {
 	now := time.Now()
 	return Model{
 		cfg:         cfg,
+		startedAt:   now,
 		collapsed:   collapsed,
 		changed:     map[string]time.Time{},
 		absent:      map[string]*absence{},
@@ -297,6 +299,44 @@ type verifyDoneMsg struct {
 	err     error
 }
 
+// backfillDoneMsg carries the startup reconstruction of the recent past.
+type backfillDoneMsg struct {
+	events []gh.Event
+	err    error
+}
+
+// backfillCmd reconstructs the seed window, off the UI goroutine.
+//
+// Two searches, because the dashboard's own is open-only and a month described
+// without the pull requests that were merged in it is a month with its best
+// days left out. The closed one is best-effort: if it fails, what the open one
+// found is still worth showing.
+func (m Model) backfillCmd() tea.Cmd {
+	cfg := m.cfg
+	started := m.startedAt
+	return func() tea.Msg {
+		// Generous. Both searches are paginated, and each page asks for far
+		// more than a poll does.
+		ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+		defer cancel()
+		since := started.Add(-cfg.Seed)
+
+		open, err := cfg.Client.Backfill(ctx, cfg.Mode.Query(cfg.Extra), cfg.Max)
+		if err != nil {
+			return backfillDoneMsg{err: err}
+		}
+		prs, viewer := open.PRs, open.Viewer
+
+		if done, err := cfg.Client.Backfill(ctx, cfg.Mode.ClosedQuery(cfg.Extra, since), cfg.Max); err == nil {
+			prs = append(prs, done.PRs...)
+			if viewer == "" {
+				viewer = done.Viewer
+			}
+		}
+		return backfillDoneMsg{events: gh.Seed(prs, since, viewer)}
+	}
+}
+
 type tickMsg time.Time
 
 func tickCmd() tea.Cmd {
@@ -304,7 +344,37 @@ func tickCmd() tea.Cmd {
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(m.fetchCmdSeq(m.fetchSeq), tickCmd(), m.spin.Tick)
+	cmds := []tea.Cmd{m.fetchCmdSeq(m.fetchSeq), tickCmd(), m.spin.Tick}
+	if m.cfg.Seed > 0 {
+		cmds = append(cmds, m.backfillCmd())
+	}
+	return tea.Batch(cmds...)
+}
+
+// applyBackfill files the reconstructed past, if there was any.
+func (m Model) applyBackfill(msg backfillDoneMsg) Model {
+	m.seeded = true
+	if msg.err != nil {
+		// Never fatal: the dashboard's own job is unaffected by not knowing
+		// what happened before it started.
+		m.setToast("could not fill the feed in: " + gh.CleanMessage(msg.err.Error(), 90))
+		return m
+	}
+	if len(msg.events) == 0 {
+		return m
+	}
+	m.record(append(msg.events, gh.SessionEvent(m.startedAt)))
+
+	// Showing it is the whole point: a feed filled in behind a closed pane
+	// answers a question the user cannot see it answering. It opens unfocused,
+	// so the arrow keys still belong to the list — which is worth saying out
+	// loud, because a pane that appeared unbidden gives no hint that getting
+	// into it takes a keypress.
+	m.showEvents = true
+	m.setToast(fmt.Sprintf("%s from the last %s — e to scroll the feed",
+		plural(len(msg.events), "event"), tidyDuration(m.cfg.Seed)))
+	m.clampScroll()
+	return m
 }
 
 // startFetch supersedes any request in flight and returns the command for the
@@ -363,6 +433,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case verifyDoneMsg:
 		return m.applyVerify(msg), nil
+
+	case backfillDoneMsg:
+		return m.applyBackfill(msg), nil
 
 	case tea.KeyMsg:
 		return m.handleKey(msg)
@@ -443,36 +516,12 @@ func (m Model) applyFetch(msg fetchDoneMsg) (tea.Model, tea.Cmd) {
 		next, verify = m.holdVanished(prev, next, msg.res.Complete)
 	}
 
-	var events []gh.Event
-	if !m.seeded && m.cfg.Seed > 0 {
-		m.seeded = true
-		// The first poll is the only one that can say anything about the time
-		// before it, and it says it from GitHub's own timestamps rather than
-		// from a comparison. The marker goes on the end so the feed shows
-		// where the reconstruction stops and the watching starts.
-		if seed := gh.Seed(next, msg.res.FetchedAt.Add(-m.cfg.Seed), msg.res.Viewer); len(seed) > 0 {
-			events = append(seed, gh.SessionEvent(msg.res.FetchedAt))
-			// Showing it is the whole point. The pane starts closed, so a feed
-			// filled in behind it answers a question the user cannot see it
-			// answering — and looks exactly like the feature not working.
-			// Only when there is something to show: opening onto "nothing
-			// happened" would just be a pane in the way.
-			//
-			// It opens unfocused, so the arrow keys still belong to the list
-			// as they always have. That is worth saying out loud, because a
-			// pane that appeared on its own gives no hint that getting into
-			// it takes a keypress.
-			m.showEvents = true
-			m.setToast(fmt.Sprintf("%s from the last %s — e to scroll the feed",
-				plural(len(seed), "event"), tidyDuration(m.cfg.Seed)))
-		}
-	}
-	events = append(events, gh.Diff(prev, next, gh.DiffOpts{
+	events := gh.Diff(prev, next, gh.DiffOpts{
 		Now:          msg.res.FetchedAt,
 		PrevComplete: m.lastComplete,
 		Mode:         m.cfg.Mode,
 		Viewer:       msg.res.Viewer,
-	})...)
+	})
 	m.record(events)
 
 	selected := m.selectedKey()
@@ -618,20 +667,42 @@ func (m *Model) record(events []gh.Event) {
 		}
 		m.changed[e.Key] = e.At
 	}
+	// Reading back through the feed should not be interrupted by whatever
+	// lands mid-sentence. A cursor already at the top is left there, so an
+	// unattended feed still follows along live; anywhere else it is pinned to
+	// the line it was on and found again afterwards, which survives the
+	// backfill arriving out of order as simple arithmetic would not.
+	var held gh.Event
+	anchored := false
+	if m.eventsFocus && m.eventCursor > 0 {
+		if e := m.selectedEvent(); e != nil {
+			held, anchored = *e, true
+		}
+	}
+
 	m.events = append(m.events, events...)
+	gh.SortByTime(m.events)
 	if len(m.events) > maxEvents {
 		m.events = m.events[len(m.events)-maxEvents:]
 	}
-	// Reading back through the feed should not be interrupted by the poll that
-	// lands mid-sentence. Because positions are counted from the newest end,
-	// staying on the same event means stepping the same distance further back.
-	// A cursor already at the top is left there, so an unattended feed still
-	// follows along live.
-	if m.eventsFocus && m.eventCursor > 0 {
-		m.eventCursor += len(events)
-		m.eventTop += len(events)
+
+	if anchored {
+		m.eventCursor = m.displayIndexOf(held)
 	}
 	m.clampEvents()
+}
+
+// displayIndexOf finds an event's position counting back from the newest,
+// which is the order the pane draws in. A line that has fallen off the end of
+// the backlog reports 0, putting the cursor back on the present.
+func (m *Model) displayIndexOf(want gh.Event) int {
+	for i := len(m.events) - 1; i >= 0; i-- {
+		e := m.events[i]
+		if e.Kind == want.Kind && e.Key == want.Key && e.Text == want.Text && e.At.Equal(want.At) {
+			return len(m.events) - 1 - i
+		}
+	}
+	return 0
 }
 
 // clampEvents keeps the feed cursor and its window inside the backlog.
