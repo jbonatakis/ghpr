@@ -106,14 +106,15 @@ func TestTheBackfillStopsOnceTheBacklogIsFull(t *testing.T) {
 		t.Errorf("stopped early with only %d events", m.backfillFound)
 	}
 
-	// A month is planned as twelve searches. Stopping should spend well under
-	// that, though the pool means a few land after the cap is reached.
+	// Stopping should spend well under the full plan, though the pool means a
+	// few land after the cap is reached.
+	planned := plannedSearches(720 * time.Hour)
 	mu.Lock()
 	defer mu.Unlock()
-	if served >= 12 {
-		t.Errorf("served %d searches; the cap saved nothing", served)
+	if served >= planned {
+		t.Errorf("served %d of %d searches; the cap saved nothing", served, planned)
 	}
-	t.Logf("filled the backlog after %d of 12 searches", served)
+	t.Logf("filled the backlog after %d of %d searches", served, planned)
 }
 
 // With little to find, the cap never trips and every window is searched.
@@ -155,9 +156,17 @@ func TestASmallBackfillStillSearchesEveryWindow(t *testing.T) {
 	if m.backfillStopped {
 		t.Error("a backfill that found almost nothing gave up early")
 	}
+	planned := plannedSearches(720 * time.Hour)
 	mu.Lock()
 	defer mu.Unlock()
-	if served != 12 {
-		t.Errorf("served %d searches, want all 12 windows", served)
+	if served != planned {
+		t.Errorf("served %d searches, want all %d", served, planned)
 	}
+}
+
+// plannedSearches is how many searches a span is divided into. It depends only
+// on the span, not on when it is asked.
+func plannedSearches(span time.Duration) int {
+	now := time.Now()
+	return len(gh.BackfillSearches("", now.Add(-span), now))
 }

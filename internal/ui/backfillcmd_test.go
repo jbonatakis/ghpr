@@ -140,10 +140,11 @@ func runBackfill(t *testing.T, c *gh.Client, window time.Duration) (Model, []bac
 // reconstructs as an empty feed.
 func TestTheBackfillIsNotScopedToTheDashboardMode(t *testing.T) {
 	srv := &recordingServer{}
-	runBackfill(t, srv.start(t, onePR(t)), 8*time.Hour)
+	// One window's worth, so the two searches are the two shapes.
+	runBackfill(t, srv.start(t, onePR(t)), 20*time.Minute)
 
 	asked := srv.asked()
-	if len(asked) != 2 {
+	if len(asked) != gh.BackfillShapes {
 		t.Fatalf("ran %d searches: %q", len(asked), asked)
 	}
 	joined := strings.Join(asked, " || ")

@@ -149,44 +149,57 @@ func (w backfillWindow) qualifier() string {
 	return "updated:" + w.from.UTC().Format(iso) + ".." + w.to.UTC().Format(iso)
 }
 
-// backfillChunkFloor is the narrowest a chunk is worth making. Below it the
-// searches cost more than the work they divide.
-const backfillChunkFloor = 6 * time.Hour
+// The windows are not equal. They start narrow at the present and widen going
+// back, because the two things they are asked to do want opposite shapes.
+//
+// A window's latency is set by how many pages it needs, and pages within one
+// search are sequential — the cursor for the next is in the answer to the last.
+// A half-hour of activity is almost always a single page; five days of it can
+// be four or five round trips of a query heavy enough that each one is slow.
+// Since windows are released in order, everything waits on the newest, so
+// making that one as cheap as possible is what decides how long the feed sits
+// empty after launch.
+//
+// Widening as they go back keeps the count logarithmic rather than linear: an
+// even split fine enough to make the first window half an hour would cut a
+// month into 1,440 searches. This gives eight. The old, wide ones are also
+// exactly the searches the backlog cap is most likely to abandon before they
+// ever run.
+const (
+	backfillFirstWindow = 30 * time.Minute
+	backfillGrowth      = 3
+	backfillMaxChunks   = 10
+)
 
-// backfillMaxChunks bounds the request count. Chunk width scales with the
-// window rather than being fixed, because a fixed three hours would split a
-// month into two hundred and forty searches to save a few seconds on a day.
-const backfillMaxChunks = 6
-
-// backfillWindows divides a span into chunks, newest first, so the most recent
-// activity is the first thing to land.
+// backfillWindows divides a span into windows, newest first and narrowest
+// first, so the most recent activity is both the first to be asked for and the
+// quickest to come back.
 //
 // Adjacent bounds are inclusive at both ends, so a pull request updated exactly
-// on a boundary comes back in both chunks; callers de-duplicate by pull request
-// anyway, because the two search shapes overlap regardless.
+// on a boundary comes back in both windows; callers de-duplicate by pull
+// request anyway, because the two search shapes overlap regardless.
 func backfillWindows(since, now time.Time) []backfillWindow {
 	span := now.Sub(since)
 	if span <= 0 {
 		return nil
 	}
-	n := int(span / backfillChunkFloor)
-	if n < 1 {
-		n = 1
-	}
-	if n > backfillMaxChunks {
-		n = backfillMaxChunks
-	}
 
-	width := span / time.Duration(n)
-	out := make([]backfillWindow, 0, n)
-	for i := 0; i < n; i++ {
-		// i counts back from the present, so out[0] is the newest chunk.
-		to := now.Add(-time.Duration(i) * width)
+	var (
+		out   []backfillWindow
+		to    = now
+		width = backfillFirstWindow
+	)
+	for len(out) < backfillMaxChunks && to.After(since) {
 		from := to.Add(-width)
-		if i == n-1 {
-			from = since // absorb any rounding remainder into the oldest chunk
+		last := len(out) == backfillMaxChunks-1
+		if !from.After(since) || last {
+			// The final window absorbs whatever is left, however wide that is:
+			// better one oversized search at the far end than a hole.
+			from = since
 		}
-		out = append(out, backfillWindow{from: from, to: to, newest: i == 0})
+		out = append(out, backfillWindow{from: from, to: to, newest: len(out) == 0})
+		to = from
+		width *= backfillGrowth
 	}
 	return out
 }

@@ -162,7 +162,7 @@ func TestBackfillSeedsWhatThePollCannotSee(t *testing.T) {
 // not be scoped to whichever one the dashboard happens to be showing.
 func TestBackfillSearchesCoverEverythingYouTouch(t *testing.T) {
 	now := time.Date(2026, 7, 29, 15, 0, 0, 0, time.UTC)
-	since := now.Add(-time.Hour) // one window's worth, so two searches
+	since := now.Add(-30 * time.Minute) // one window's worth, so two searches
 	got := BackfillSearches("", since, now)
 
 	if len(got) != 2 {
@@ -201,26 +201,73 @@ func TestBackfillSearchesCoverEverythingYouTouch(t *testing.T) {
 	}
 }
 
-// A long window is divided so the searches can run at once and land newest
-// first. A short one is left whole: below the floor the extra searches cost
-// more than the work they divide.
-func TestBackfillSearchesChunkOnlyWhenItIsWorthIt(t *testing.T) {
+// The count stays logarithmic in the span. An even split fine enough to make
+// the first window half an hour would cut a month into 1,440 searches.
+func TestBackfillWindowCountStaysSmall(t *testing.T) {
 	now := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
 	for _, tc := range []struct {
-		window     time.Duration
-		wantChunks int
+		span      time.Duration
+		maxWindow int
 	}{
-		{time.Hour, 1},
-		{5 * time.Hour, 1},
-		{6 * time.Hour, 1},
-		{24 * time.Hour, 4},
-		{48 * time.Hour, 6},  // capped
-		{720 * time.Hour, 6}, // still capped: a month is not 240 searches
+		{30 * time.Minute, 1},
+		{time.Hour, 2},
+		{24 * time.Hour, 5},
+		{168 * time.Hour, 7},
+		{720 * time.Hour, 8},
+		{8760 * time.Hour, backfillMaxChunks}, // a year, still bounded
 	} {
-		got := BackfillSearches("", now.Add(-tc.window), now)
-		// Two search shapes per chunk.
-		if want := tc.wantChunks * 2; len(got) != want {
-			t.Errorf("%s window produced %d searches, want %d", tc.window, len(got), want)
+		got := backfillWindows(now.Add(-tc.span), now)
+		if len(got) > tc.maxWindow {
+			t.Errorf("%s span produced %d windows, want at most %d",
+				tc.span, len(got), tc.maxWindow)
+		}
+		if len(got) == 0 {
+			t.Errorf("%s span produced no windows at all", tc.span)
+		}
+		// Two search shapes per window.
+		if want := len(got) * BackfillShapes; len(BackfillSearches("", now.Add(-tc.span), now)) != want {
+			t.Errorf("%s span: searches and windows disagree", tc.span)
+		}
+	}
+}
+
+// The newest window is the one everything waits on, so it is deliberately the
+// narrowest — a half hour is nearly always a single page, and pages within one
+// search are sequential.
+func TestTheNewestWindowIsTheNarrowest(t *testing.T) {
+	now := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
+	got := backfillWindows(now.Add(-720*time.Hour), now)
+
+	if len(got) < 3 {
+		t.Fatalf("a month gave only %d windows", len(got))
+	}
+	if w := got[0].to.Sub(got[0].from); w != backfillFirstWindow {
+		t.Errorf("the newest window is %s wide, want %s", w, backfillFirstWindow)
+	}
+	// Widening as they go back is what keeps the count down.
+	for i := 1; i < len(got)-1; i++ {
+		prev := got[i-1].to.Sub(got[i-1].from)
+		this := got[i].to.Sub(got[i].from)
+		if this <= prev {
+			t.Errorf("window %d (%s) is no wider than window %d (%s)", i, this, i-1, prev)
+		}
+	}
+	// And the last one is however wide it needs to be to reach the start.
+	if last := got[len(got)-1]; !last.from.Equal(now.Add(-720 * time.Hour)) {
+		t.Errorf("the oldest window starts at %s, leaving a hole", last.from)
+	}
+}
+
+// A span shorter than the first window is one search, not a fragment of one.
+func TestAShortSpanIsASingleWindow(t *testing.T) {
+	now := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
+	for _, span := range []time.Duration{time.Minute, 10 * time.Minute, 30 * time.Minute} {
+		got := backfillWindows(now.Add(-span), now)
+		if len(got) != 1 {
+			t.Errorf("%s span produced %d windows, want 1", span, len(got))
+		}
+		if !got[0].from.Equal(now.Add(-span)) {
+			t.Errorf("%s span starts at %s", span, got[0].from)
 		}
 	}
 }
@@ -253,7 +300,7 @@ func TestBackfillSearchesRunNewestWindowFirst(t *testing.T) {
 // Together the windows have to cover the whole span with no hole in the middle.
 func TestBackfillWindowsLeaveNoGap(t *testing.T) {
 	now := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
-	since := now.Add(-24 * time.Hour)
+	since := now.Add(-720 * time.Hour)
 	got := backfillWindows(since, now)
 
 	if got[0].to != now {

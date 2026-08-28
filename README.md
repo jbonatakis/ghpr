@@ -328,12 +328,27 @@ is:pr archived:false review-requested:@me  updated:2026-08-28T01:00..2026-08-28T
   because a pull request untouched inside the window has nothing to add to the
   seed and fetching it is pure waste. That bound is what pays for the wider
   scope.
-- **Divided and run four at a time.** A long window is cut into chunks — six
-  hours at the narrowest, at most six of them, so a month is twelve searches
-  rather than the two hundred and forty a fixed chunk width would give. They
-  run newest-window-first across a pool of four, and each window lands in the
-  feed as it completes, so the most recent activity is readable while the rest
-  is still being gathered. **In window order, not finishing order** — the pool
+- **Divided narrow-first and run four at a time.** The window is cut into
+  chunks that start at half an hour and widen going back — a day becomes
+  `30m, 1h30, 4h30, 13h30, 4h`; a month, eight windows ending in a fortnight.
+
+  Narrow first because a window's latency is set by how many *pages* it needs,
+  and pages within one search are sequential: the cursor for the next is in the
+  answer to the last. Half an hour of activity is nearly always one page; five
+  days of it can be five round trips of a query heavy enough that each is slow.
+  Since windows are released in order, everything waits on the newest one, so
+  making that one as cheap as possible is what decides how long the feed sits
+  empty after launch.
+
+  Widening because the count has to stay logarithmic: an even split fine enough
+  to make the first window half an hour would cut a month into 1,440 searches.
+  This gives sixteen — about a third more than equal chunks, and the extra ones
+  are all at the old end, which is exactly where the backlog cap tends to
+  abandon them unread.
+
+  They run newest-window-first across a pool of four, and each window lands in
+  the feed as it completes, so the most recent activity is readable while the
+  rest is still being gathered. **In window order, not finishing order** — the pool
   answers out of sequence, and filing a late-finishing early window would drop
   newer activity in above whatever you were already reading. Because a window
   bounds `updated`, and a pull request's newest event is never later than its
