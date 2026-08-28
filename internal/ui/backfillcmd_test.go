@@ -100,7 +100,10 @@ func onePR(t *testing.T) string {
 	return string(raw)
 }
 
-func runBackfill(t *testing.T, c *gh.Client, window time.Duration) backfillDoneMsg {
+// runBackfill drives the real thing: the producer fans out across its pool
+// while the model drains the answers one at a time, exactly as the event loop
+// does, and returns the model plus every chunk that arrived.
+func runBackfill(t *testing.T, c *gh.Client, window time.Duration) (Model, []backfillChunkMsg) {
 	t.Helper()
 	isolateConfig(t)
 	m := New(Config{
@@ -109,11 +112,27 @@ func runBackfill(t *testing.T, c *gh.Client, window time.Duration) backfillDoneM
 	})
 	m = update(m, tea.WindowSizeMsg{Width: 140, Height: 40})
 
-	msg, ok := m.backfillCmd()().(backfillDoneMsg)
-	if !ok {
-		t.Fatal("backfillCmd did not return a backfillDoneMsg")
+	go m.runBackfill()()
+
+	var chunks []backfillChunkMsg
+	done := time.After(20 * time.Second)
+	for {
+		type result struct{ msg tea.Msg }
+		got := make(chan result, 1)
+		go func(await tea.Cmd) { got <- result{await()} }(m.awaitBackfill())
+
+		select {
+		case r := <-got:
+			if _, finished := r.msg.(backfillDoneMsg); finished {
+				return m.applyBackfill(backfillDoneMsg{}), chunks
+			}
+			chunk := r.msg.(backfillChunkMsg)
+			chunks = append(chunks, chunk)
+			m = m.applyBackfillChunk(chunk)
+		case <-done:
+			t.Fatal("the backfill never finished")
+		}
 	}
-	return msg
 }
 
 // The dashboard is on authored mode here, and the backfill must still look
@@ -121,7 +140,7 @@ func runBackfill(t *testing.T, c *gh.Client, window time.Duration) backfillDoneM
 // reconstructs as an empty feed.
 func TestTheBackfillIsNotScopedToTheDashboardMode(t *testing.T) {
 	srv := &recordingServer{}
-	runBackfill(t, srv.start(t, onePR(t)), 720*time.Hour)
+	runBackfill(t, srv.start(t, onePR(t)), 8*time.Hour)
 
 	asked := srv.asked()
 	if len(asked) != 2 {
@@ -147,28 +166,32 @@ func TestTheBackfillIsNotScopedToTheDashboardMode(t *testing.T) {
 // once.
 func TestOverlappingSearchesSeedEachPullRequestOnce(t *testing.T) {
 	srv := &recordingServer{}
-	msg := runBackfill(t, srv.start(t, onePR(t)), 720*time.Hour)
+	// Long enough to be chunked, so the same pull request comes back from
+	// several searches at once.
+	m, chunks := runBackfill(t, srv.start(t, onePR(t)), 24*time.Hour)
 
-	if msg.err != nil {
-		t.Fatalf("backfill: %v", msg.err)
+	if len(chunks) < 2 {
+		t.Fatalf("expected several searches, got %d", len(chunks))
 	}
-	if len(msg.events) == 0 {
+	if len(m.events) == 0 {
 		t.Fatal("the backfill seeded nothing")
 	}
 
 	counts := map[string]int{}
-	for _, e := range msg.events {
+	for _, e := range m.events {
+		if e.Kind == gh.EventSessionStart {
+			continue
+		}
 		counts[e.Kind.Icon()+e.Text+e.Actor]++
 	}
 	for what, n := range counts {
 		if n > 1 {
-			t.Errorf("%q was seeded %d times; the two searches returned the same pull request", what, n)
+			t.Errorf("%q was seeded %d times; every search returned the same pull request", what, n)
 		}
 	}
 
-	// And what it found is what one pull request carries.
 	var kinds []string
-	for _, e := range msg.events {
+	for _, e := range m.events {
 		kinds = append(kinds, e.Text)
 	}
 	for _, want := range []string{"opened", "merged", "approved", "new comment"} {
@@ -181,6 +204,63 @@ func TestOverlappingSearchesSeedEachPullRequestOnce(t *testing.T) {
 		if !found {
 			t.Errorf("the backfill did not seed %q; got %q", want, kinds)
 		}
+	}
+}
+
+// The searches run at once rather than one after another. Timing is the only
+// way to tell, so the server holds every request until enough have arrived
+// together — which never happens if they are issued serially.
+func TestTheSearchesRunInParallel(t *testing.T) {
+	isolateConfig(t)
+	payload := onePR(t)
+
+	const want = backfillWorkers
+	var (
+		mu             sync.Mutex
+		inFlight, peak int
+	)
+	gate := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		inFlight++
+		if inFlight > peak {
+			peak = inFlight
+		}
+		reached := inFlight >= want
+		mu.Unlock()
+
+		if reached {
+			// Release everyone the moment a full pool is waiting together.
+			select {
+			case <-gate:
+			default:
+				close(gate)
+			}
+		}
+		select {
+		case <-gate:
+		case <-time.After(5 * time.Second):
+		}
+
+		mu.Lock()
+		inFlight--
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(payload))
+	}))
+	t.Cleanup(srv.Close)
+
+	c := gh.NewClient("test")
+	c.Endpoint = srv.URL
+	runBackfill(t, c, 24*time.Hour) // 4 windows x 2 shapes = 8 searches
+
+	mu.Lock()
+	defer mu.Unlock()
+	if peak < 2 {
+		t.Errorf("peak concurrency was %d; the searches ran one at a time", peak)
+	}
+	if peak > backfillWorkers {
+		t.Errorf("peak concurrency was %d, above the pool of %d", peak, backfillWorkers)
 	}
 }
 
@@ -215,12 +295,21 @@ func TestOneFailedSearchDoesNotLoseTheOther(t *testing.T) {
 	})
 	m = update(m, tea.WindowSizeMsg{Width: 140, Height: 40})
 
-	msg := m.backfillCmd()().(backfillDoneMsg)
-	if msg.err != nil {
-		t.Errorf("a half-successful backfill reported failure: %v", msg.err)
+	go m.runBackfill()()
+	var events int
+	for {
+		msg := m.awaitBackfill()()
+		if _, done := msg.(backfillDoneMsg); done {
+			break
+		}
+		m = m.applyBackfillChunk(msg.(backfillChunkMsg))
+		events = len(m.events)
 	}
-	if len(msg.events) == 0 {
+	if events == 0 {
 		t.Error("the surviving search's findings were thrown away")
+	}
+	if m = m.applyBackfill(backfillDoneMsg{}); m.err != nil {
+		t.Errorf("a half-successful backfill took the dashboard down: %v", m.err)
 	}
 }
 
@@ -243,8 +332,20 @@ func TestBothSearchesFailingIsReportedAsAnError(t *testing.T) {
 	})
 	m = update(m, tea.WindowSizeMsg{Width: 140, Height: 40})
 
-	msg := m.backfillCmd()().(backfillDoneMsg)
-	if msg.err == nil {
-		t.Error("both searches failed and the backfill called it a success")
+	go m.runBackfill()()
+	for {
+		msg := m.awaitBackfill()()
+		if _, done := msg.(backfillDoneMsg); done {
+			break
+		}
+		m = m.applyBackfillChunk(msg.(backfillChunkMsg))
+	}
+	m = m.applyBackfill(backfillDoneMsg{})
+
+	if !m.seedFailed {
+		t.Error("every search failed and the backfill called it a success")
+	}
+	if !strings.Contains(m.toast, "could not fill the feed in") {
+		t.Errorf("nothing told the user; toast is %q", m.toast)
 	}
 }

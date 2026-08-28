@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -164,6 +165,19 @@ type Model struct {
 	backfilling bool
 	seedFailed  bool
 
+	// backfillCh carries each search's answer as it lands. backfillSeen is what
+	// has already been seeded from those answers: the searches overlap by
+	// design, and a pull request found twice must not have its whole history
+	// told twice. backfillFound counts what was filed, for the closing word.
+	// backfillStop asks the workers to give up early: chunks arrive newest
+	// first and the backlog only keeps maxEvents, so once that many have been
+	// filed everything still queued would be trimmed away on arrival.
+	backfillCh      chan backfillChunkMsg
+	backfillStop    chan struct{}
+	backfillStopped bool
+	backfillSeen    map[string]bool
+	backfillFound   int
+
 	// absent tracks pull requests that dropped out of the search but have not
 	// been accounted for. They stay on screen and are looked up directly, so a
 	// page-boundary artifact never shows up as "merged or closed".
@@ -242,11 +256,24 @@ func New(cfg Config) Model {
 		nextFetch:   now,
 		loading:     true,
 		// Init issues the backfill on exactly this condition.
-		backfilling: cfg.Seed > 0,
-		fetchSeq:    1,
-		width:       100,
-		height:      30,
+		backfilling:  cfg.Seed > 0,
+		backfillCh:   backfillChannel(cfg.Seed),
+		backfillStop: make(chan struct{}),
+		backfillSeen: map[string]bool{},
+		fetchSeq:     1,
+		width:        100,
+		height:       30,
 	}
+}
+
+// backfillChannel carries the searches' answers, buffered enough that a worker
+// never blocks handing one over — the UI goroutine may be busy redrawing, and a
+// search that has done its work should not be kept waiting to say so.
+func backfillChannel(seed time.Duration) chan backfillChunkMsg {
+	if seed <= 0 {
+		return nil
+	}
+	return make(chan backfillChunkMsg, 32)
 }
 
 // pointsPerHour estimates the GraphQL budget the current interval consumes.
@@ -320,11 +347,31 @@ type verifyDoneMsg struct {
 	err     error
 }
 
-// backfillDoneMsg carries the startup reconstruction of the recent past.
-type backfillDoneMsg struct {
-	events []gh.Event
+// backfillChunkMsg is one search's worth of the reconstructed past, delivered
+// as it lands rather than at the end. A month of activity takes long enough to
+// gather that waiting for all of it before showing any is the difference
+// between a feed that fills in and a feed that hangs.
+type backfillChunkMsg struct {
+	prs    []gh.PR
+	viewer string
+	since  time.Time
 	err    error
 }
+
+// backfillDoneMsg says every search has answered.
+type backfillDoneMsg struct {
+	events []gh.Event // only set by tests driving the old whole-shot path
+	err    error
+}
+
+// backfillWorkers bounds how many searches are in flight at once.
+//
+// GitHub asks that requests for one user be made serially, and answers a burst
+// with a secondary rate limit rather than data. This is a compromise: enough
+// parallelism that the wait is a fraction of what it was, few enough that the
+// API does not start refusing. The searches are heavy, so even four at a time
+// is a lot of work for the other end.
+const backfillWorkers = 4
 
 // backfillCmd reconstructs the seed window, off the UI goroutine.
 //
@@ -335,45 +382,77 @@ type backfillDoneMsg struct {
 // Each search is best-effort. They overlap, so a pull request found twice is
 // only seeded once, and a failure in one still leaves what the other found
 // worth showing — only a complete washout is reported as an error.
-func (m Model) backfillCmd() tea.Cmd {
-	cfg := m.cfg
-	started := m.startedAt
+// runBackfill fans the searches out across a bounded pool and streams each
+// answer down the model's channel, closing it when they have all reported.
+//
+// The plans come back newest-window-first and are handed out in that order, so
+// what lands first is what happened most recently — which is both what the
+// reader wants first and what the top of the feed is.
+func (m Model) runBackfill() tea.Cmd {
+	cfg, started, out, stop := m.cfg, m.startedAt, m.backfillCh, m.backfillStop
+	if out == nil {
+		return nil
+	}
 	return func() tea.Msg {
-		// Generous. The searches are paginated, and each page asks for far
-		// more than a poll does.
+		// Generous: each search is paginated and every page asks for far more
+		// than a poll does.
 		ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 		defer cancel()
 		since := started.Add(-cfg.Seed)
 
-		var (
-			prs      []gh.PR
-			viewer   string
-			firstErr error
-			seen     = map[string]bool{}
-		)
-		for _, q := range gh.BackfillSearches(cfg.Extra, since) {
-			res, err := cfg.Client.Backfill(ctx, q, cfg.Max)
-			if err != nil {
-				if firstErr == nil {
-					firstErr = err
+		plans := make(chan gh.BackfillPlan)
+		var wg sync.WaitGroup
+		for i := 0; i < backfillWorkers; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for plan := range plans {
+					// Checked per plan rather than per page: a search already
+					// in flight is cheaper to finish than to abandon.
+					select {
+					case <-stop:
+						return
+					default:
+					}
+					res, err := cfg.Client.Backfill(ctx, plan.Query, cfg.Max)
+					out <- backfillChunkMsg{
+						prs: res.PRs, viewer: res.Viewer, since: since, err: err,
+					}
 				}
-				continue
-			}
-			if viewer == "" {
-				viewer = res.Viewer
-			}
-			for _, p := range res.PRs {
-				if seen[p.Key()] {
-					continue
-				}
-				seen[p.Key()] = true
-				prs = append(prs, p)
+			}()
+		}
+
+		// Handed out newest window first, so what lands first is what happened
+		// most recently — which is what the reader wants and what the top of
+		// the feed is. Stops feeding the moment the backlog is full.
+	feed:
+		for _, plan := range gh.BackfillSearches(cfg.Extra, since, started) {
+			select {
+			case <-stop:
+				break feed
+			case plans <- plan:
 			}
 		}
-		if len(prs) == 0 && firstErr != nil {
-			return backfillDoneMsg{err: firstErr}
+		close(plans)
+
+		wg.Wait()
+		close(out)
+		return nil
+	}
+}
+
+// awaitBackfill waits for the next chunk, or for the channel to close.
+func (m Model) awaitBackfill() tea.Cmd {
+	ch := m.backfillCh
+	if ch == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		chunk, ok := <-ch
+		if !ok {
+			return backfillDoneMsg{}
 		}
-		return backfillDoneMsg{events: gh.Seed(prs, since, viewer)}
+		return chunk
 	}
 }
 
@@ -386,35 +465,89 @@ func tickCmd() tea.Cmd {
 func (m Model) Init() tea.Cmd {
 	cmds := []tea.Cmd{m.fetchCmdSeq(m.fetchSeq), tickCmd(), m.spin.Tick}
 	if m.cfg.Seed > 0 {
-		cmds = append(cmds, m.backfillCmd())
+		// One command drives the searches, another waits on their answers; the
+		// second re-arms itself for as long as they keep coming.
+		cmds = append(cmds, m.runBackfill(), m.awaitBackfill())
 	}
 	return tea.Batch(cmds...)
 }
 
+// applyBackfillChunk files one search's worth of reconstructed history.
+func (m Model) applyBackfillChunk(msg backfillChunkMsg) Model {
+	if msg.err != nil {
+		// Remembered rather than reported: the other searches may still find
+		// plenty, and only a complete washout is worth calling a failure.
+		m.seedFailed = true
+		return m
+	}
+	if m.backfillSeen == nil {
+		m.backfillSeen = map[string]bool{}
+	}
+
+	fresh := make([]gh.PR, 0, len(msg.prs))
+	for _, p := range msg.prs {
+		if m.backfillSeen[p.Key()] {
+			continue // the search shapes overlap, and windows share their bounds
+		}
+		m.backfillSeen[p.Key()] = true
+		fresh = append(fresh, p)
+	}
+	events := gh.Seed(fresh, msg.since, msg.viewer)
+	if len(events) == 0 {
+		return m
+	}
+
+	first := m.backfillFound == 0
+	m.backfillFound += len(events)
+	if m.backfillFound >= maxEvents && !m.backfillStopped {
+		// The backlog is full. Chunks come newest first, so anything still
+		// queued is older than what has already been filed and would be
+		// trimmed away the moment it arrived — asking GitHub for it is work
+		// nobody will ever see.
+		m.backfillStopped = true
+		close(m.backfillStop)
+	}
+	if first {
+		// The boundary goes in with the first thing to arrive, so the feed
+		// reads correctly while the rest is still landing.
+		events = append(events, gh.SessionEvent(m.startedAt))
+		m.showEvents = true
+	}
+	m.record(events)
+	m.clampScroll()
+	return m
+}
+
 // applyBackfill files the reconstructed past, if there was any.
+// applyBackfill closes the reconstruction out once every search has answered.
+// The events themselves arrived chunk by chunk; what is left is to stop saying
+// "filling in", and to say what it all came to.
 func (m Model) applyBackfill(msg backfillDoneMsg) Model {
 	m.seeded = true
 	m.backfilling = false
+
+	// The whole-shot path, still used by tests that hand over a finished set.
+	if len(msg.events) > 0 {
+		m.backfillFound += len(msg.events)
+		m.record(append(msg.events, gh.SessionEvent(m.startedAt)))
+		m.showEvents = true
+	}
 	if msg.err != nil {
 		m.seedFailed = true
+	}
+
+	switch {
+	case m.backfillFound > 0:
+		// It opens unfocused, so the arrow keys still belong to the list —
+		// worth saying out loud, because a pane that appeared unbidden gives
+		// no hint that getting into it takes a keypress.
+		m.setToast(fmt.Sprintf("%s from the last %s — e to scroll the feed",
+			plural(m.backfillFound, "event"), tidyDuration(m.cfg.Seed)))
+	case m.seedFailed:
 		// Never fatal: the dashboard's own job is unaffected by not knowing
 		// what happened before it started.
-		m.setToast("could not fill the feed in: " + gh.CleanMessage(msg.err.Error(), 90))
-		return m
+		m.setToast("could not fill the feed in — the startup searches failed")
 	}
-	if len(msg.events) == 0 {
-		return m
-	}
-	m.record(append(msg.events, gh.SessionEvent(m.startedAt)))
-
-	// Showing it is the whole point: a feed filled in behind a closed pane
-	// answers a question the user cannot see it answering. It opens unfocused,
-	// so the arrow keys still belong to the list — which is worth saying out
-	// loud, because a pane that appeared unbidden gives no hint that getting
-	// into it takes a keypress.
-	m.showEvents = true
-	m.setToast(fmt.Sprintf("%s from the last %s — e to scroll the feed",
-		plural(len(msg.events), "event"), tidyDuration(m.cfg.Seed)))
 	m.clampScroll()
 	return m
 }
@@ -477,6 +610,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case verifyDoneMsg:
 		return m.applyVerify(msg), nil
+
+	case backfillChunkMsg:
+		// Re-arm: there will be another until the channel closes.
+		return m.applyBackfillChunk(msg), m.awaitBackfill()
 
 	case backfillDoneMsg:
 		return m.applyBackfill(msg), nil

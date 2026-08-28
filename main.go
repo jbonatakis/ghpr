@@ -191,12 +191,13 @@ func explainSeed(cfg ui.Config) error {
 		res  gh.Result
 		seen = map[string]bool{}
 	)
-	for _, q := range gh.BackfillSearches(cfg.Extra, since) {
-		found, err := cfg.Client.Backfill(ctx, q, cfg.Max)
+	plans := gh.BackfillSearches(cfg.Extra, since, time.Now())
+	for _, plan := range plans {
+		found, err := cfg.Client.Backfill(ctx, plan.Query, cfg.Max)
 		if err != nil {
 			fmt.Printf("NOTE: the search %q failed (%s), so whatever only it\n"+
 				"      would have found is missing from this account\n\n",
-				q, gh.CleanMessage(err.Error(), 80))
+				plan.Query, gh.CleanMessage(err.Error(), 80))
 			continue
 		}
 		if res.Viewer == "" {
@@ -220,9 +221,9 @@ func explainSeed(cfg ui.Config) error {
 	}
 	fmt.Printf("%s · %d pull requests touched in the window (%d of them finished)\n",
 		res.Viewer, len(res.PRs), closed)
-	fmt.Println("searched:")
-	for _, q := range gh.BackfillSearches(cfg.Extra, since) {
-		fmt.Printf("    %s\n", q)
+	fmt.Printf("searched (%d, run %d at a time, newest window first):\n", len(plans), 4)
+	for _, plan := range plans {
+		fmt.Printf("    %s\n", plan.Query)
 	}
 	fmt.Printf("seed window %s — nothing before %s can be reached\n",
 		tidy(window), since.Local().Format("2006-01-02 15:04"))

@@ -305,8 +305,11 @@ at launch and never again, so the thirty-second poll stays at 2 points while
 the backfill gets to see an actual month:
 
 ```
-is:pr archived:false updated:>=2026-07-29 involves:@me
-is:pr archived:false updated:>=2026-07-29 review-requested:@me
+is:pr archived:false involves:@me          updated:>=2026-08-28T07:00:00+00:00
+is:pr archived:false review-requested:@me  updated:>=2026-08-28T07:00:00+00:00
+is:pr archived:false involves:@me          updated:2026-08-28T01:00..2026-08-28T07:00
+is:pr archived:false review-requested:@me  updated:2026-08-28T01:00..2026-08-28T07:00
+…
 ```
 
 - **Everything you touched, not just the current mode.** The feed spans every
@@ -321,9 +324,22 @@ is:pr archived:false updated:>=2026-07-29 review-requested:@me
   what was merged or closed inside the window comes back too, with `✔ merged`
   and `× closed` lines of its own — for anyone who ships, that is most of the
   activity there was.
-- **Only what could contribute.** Both are bounded by `updated:>=`, because a
-  pull request untouched inside the window has nothing to add to the seed and
-  fetching it is pure waste. That bound is what pays for the wider scope.
+- **Only what could contribute.** Every search is bounded by `updated:`,
+  because a pull request untouched inside the window has nothing to add to the
+  seed and fetching it is pure waste. That bound is what pays for the wider
+  scope.
+- **Divided and run four at a time.** A long window is cut into chunks — six
+  hours at the narrowest, at most six of them, so a month is twelve searches
+  rather than the two hundred and forty a fixed chunk width would give. They
+  run newest-window-first across a pool of four, and each lands in the feed as
+  it arrives, so the most recent activity is readable while the rest is still
+  being gathered. GitHub asks that requests for one user be made serially and
+  answers a burst with a secondary rate limit, so four is a compromise rather
+  than a maximum.
+- **Stopped as soon as the backlog is full.** The feed keeps the newest 500
+  events; because the chunks arrive newest-first, once that many are filed
+  everything still queued is older and would be trimmed away on arrival. The
+  remaining searches are abandoned — on a busy month that is a third of them.
 - **Comments inside review threads**, with the dates that let them be placed.
   Where review happens inline rather than in the conversation tab, this is the
   discussion — the polling query can only count it.

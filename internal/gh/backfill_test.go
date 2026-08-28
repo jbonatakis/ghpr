@@ -161,21 +161,27 @@ func TestBackfillSeedsWhatThePollCannotSee(t *testing.T) {
 // The feed spans every mode by design, so the searches that fill it in must
 // not be scoped to whichever one the dashboard happens to be showing.
 func TestBackfillSearchesCoverEverythingYouTouch(t *testing.T) {
-	since := time.Date(2026, 7, 29, 15, 0, 0, 0, time.UTC)
-	got := BackfillSearches("", since)
+	now := time.Date(2026, 7, 29, 15, 0, 0, 0, time.UTC)
+	since := now.Add(-time.Hour) // one window's worth, so two searches
+	got := BackfillSearches("", since, now)
 
 	if len(got) != 2 {
-		t.Fatalf("got %d searches: %q", len(got), got)
+		t.Fatalf("got %d searches: %+v", len(got), got)
 	}
-	joined := strings.Join(got, " || ")
+	var queries []string
+	for _, p := range got {
+		queries = append(queries, p.Query)
+	}
+	joined := strings.Join(queries, " || ")
 	// involves:@me covers authoring, commenting, assignment and mentions, but
 	// not a review merely requested and not yet acted on.
 	for _, want := range []string{"involves:@me", "review-requested:@me"} {
 		if !strings.Contains(joined, want) {
-			t.Errorf("nothing searches %s: %q", want, got)
+			t.Errorf("nothing searches %s: %q", want, queries)
 		}
 	}
-	for _, q := range got {
+	for _, plan := range got {
+		q := plan.Query
 		if !strings.Contains(q, "is:pr") || !strings.Contains(q, "archived:false") {
 			t.Errorf("%q is not a pull request search", q)
 		}
@@ -186,7 +192,7 @@ func TestBackfillSearchesCoverEverythingYouTouch(t *testing.T) {
 		}
 		// Bounded, or the backfill fetches pull requests that cannot possibly
 		// contribute a line to it.
-		if !strings.Contains(q, "updated:>=2026-07-29") {
+		if !strings.Contains(q, "updated:") {
 			t.Errorf("%q is unbounded", q)
 		}
 		if strings.Contains(q, "author:@me") {
@@ -195,11 +201,80 @@ func TestBackfillSearchesCoverEverythingYouTouch(t *testing.T) {
 	}
 }
 
+// A long window is divided so the searches can run at once and land newest
+// first. A short one is left whole: below the floor the extra searches cost
+// more than the work they divide.
+func TestBackfillSearchesChunkOnlyWhenItIsWorthIt(t *testing.T) {
+	now := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
+	for _, tc := range []struct {
+		window     time.Duration
+		wantChunks int
+	}{
+		{time.Hour, 1},
+		{5 * time.Hour, 1},
+		{6 * time.Hour, 1},
+		{24 * time.Hour, 4},
+		{48 * time.Hour, 6},  // capped
+		{720 * time.Hour, 6}, // still capped: a month is not 240 searches
+	} {
+		got := BackfillSearches("", now.Add(-tc.window), now)
+		// Two search shapes per chunk.
+		if want := tc.wantChunks * 2; len(got) != want {
+			t.Errorf("%s window produced %d searches, want %d", tc.window, len(got), want)
+		}
+	}
+}
+
+// Newest first, because that is what the reader wants first and what the top
+// of the feed is — and because it lets the rest be abandoned once the backlog
+// is full.
+func TestBackfillSearchesRunNewestWindowFirst(t *testing.T) {
+	now := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
+	got := BackfillSearches("", now.Add(-24*time.Hour), now)
+
+	for i := 1; i < len(got); i++ {
+		if got[i].From.After(got[i-1].From) {
+			t.Fatalf("search %d covers a newer window than %d", i, i-1)
+		}
+	}
+	if !got[0].Newest {
+		t.Error("the first search is not the newest window")
+	}
+	// The newest window is left open at the top, so anything updated while the
+	// backfill itself runs is still caught.
+	if strings.Contains(got[0].Query, "..") {
+		t.Errorf("the newest window is closed at the top: %q", got[0].Query)
+	}
+	if !strings.Contains(got[len(got)-1].Query, "..") {
+		t.Errorf("an older window is unbounded: %q", got[len(got)-1].Query)
+	}
+}
+
+// Together the windows have to cover the whole span with no hole in the middle.
+func TestBackfillWindowsLeaveNoGap(t *testing.T) {
+	now := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
+	since := now.Add(-24 * time.Hour)
+	got := backfillWindows(since, now)
+
+	if got[0].to != now {
+		t.Errorf("the newest window ends at %s, want now", got[0].to)
+	}
+	if last := got[len(got)-1]; !last.from.Equal(since) {
+		t.Errorf("the oldest window starts at %s, want %s", last.from, since)
+	}
+	for i := 1; i < len(got); i++ {
+		if !got[i].to.Equal(got[i-1].from) {
+			t.Errorf("gap between window %d and %d: %s then %s",
+				i-1, i, got[i-1].from, got[i].to)
+		}
+	}
+}
+
 func TestBackfillSearchesKeepTheUsersOwnQualifiers(t *testing.T) {
-	since := time.Date(2026, 7, 29, 15, 0, 0, 0, time.UTC)
-	for _, q := range BackfillSearches("org:acme", since) {
-		if !strings.Contains(q, "org:acme") {
-			t.Errorf("-query was dropped from %q", q)
+	now := time.Date(2026, 7, 29, 15, 0, 0, 0, time.UTC)
+	for _, plan := range BackfillSearches("org:acme", now.Add(-24*time.Hour), now) {
+		if !strings.Contains(plan.Query, "org:acme") {
+			t.Errorf("-query was dropped from %q", plan.Query)
 		}
 	}
 }

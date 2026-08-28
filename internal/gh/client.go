@@ -93,12 +93,82 @@ func (m Mode) Query(extra string) string {
 // contribute to the seed, so fetching it is pure waste. GitHub's search dates
 // are days rather than instants, so the bound is rounded down to midnight and
 // Seed discards whatever falls outside the real window.
-func BackfillSearches(extra string, since time.Time) []string {
-	base := "is:pr archived:false updated:>=" + since.UTC().Format("2006-01-02") + " "
+func BackfillSearches(extra string, since, now time.Time) []BackfillPlan {
+	var out []BackfillPlan
 	extra = strings.TrimSpace(extra)
-	out := make([]string, 0, 2)
-	for _, who := range []string{"involves:@me ", "review-requested:@me "} {
-		out = append(out, strings.TrimSpace(base+who+extra))
+	for _, w := range backfillWindows(since, now) {
+		for _, who := range []string{"involves:@me ", "review-requested:@me "} {
+			q := "is:pr archived:false " + who + w.qualifier() + " " + extra
+			out = append(out, BackfillPlan{
+				Query: strings.TrimSpace(q), From: w.from, To: w.to, Newest: w.newest,
+			})
+		}
+	}
+	return out
+}
+
+// BackfillPlan is one search the backfill will run. The window it covers is
+// carried alongside the query so a caller can say what it is waiting on.
+type BackfillPlan struct {
+	Query    string
+	From, To time.Time
+	Newest   bool
+}
+
+type backfillWindow struct {
+	from, to time.Time
+	newest   bool
+}
+
+// qualifier bounds a search to the window. The newest one is left open at the
+// top so that anything updated while the backfill itself is running is still
+// caught rather than falling into the gap behind it.
+func (w backfillWindow) qualifier() string {
+	const iso = "2006-01-02T15:04:05+00:00"
+	if w.newest {
+		return "updated:>=" + w.from.UTC().Format(iso)
+	}
+	return "updated:" + w.from.UTC().Format(iso) + ".." + w.to.UTC().Format(iso)
+}
+
+// backfillChunkFloor is the narrowest a chunk is worth making. Below it the
+// searches cost more than the work they divide.
+const backfillChunkFloor = 6 * time.Hour
+
+// backfillMaxChunks bounds the request count. Chunk width scales with the
+// window rather than being fixed, because a fixed three hours would split a
+// month into two hundred and forty searches to save a few seconds on a day.
+const backfillMaxChunks = 6
+
+// backfillWindows divides a span into chunks, newest first, so the most recent
+// activity is the first thing to land.
+//
+// Adjacent bounds are inclusive at both ends, so a pull request updated exactly
+// on a boundary comes back in both chunks; callers de-duplicate by pull request
+// anyway, because the two search shapes overlap regardless.
+func backfillWindows(since, now time.Time) []backfillWindow {
+	span := now.Sub(since)
+	if span <= 0 {
+		return nil
+	}
+	n := int(span / backfillChunkFloor)
+	if n < 1 {
+		n = 1
+	}
+	if n > backfillMaxChunks {
+		n = backfillMaxChunks
+	}
+
+	width := span / time.Duration(n)
+	out := make([]backfillWindow, 0, n)
+	for i := 0; i < n; i++ {
+		// i counts back from the present, so out[0] is the newest chunk.
+		to := now.Add(-time.Duration(i) * width)
+		from := to.Add(-width)
+		if i == n-1 {
+			from = since // absorb any rounding remainder into the oldest chunk
+		}
+		out = append(out, backfillWindow{from: from, to: to, newest: i == 0})
 	}
 	return out
 }
