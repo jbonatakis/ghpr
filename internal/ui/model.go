@@ -328,31 +328,50 @@ type backfillDoneMsg struct {
 
 // backfillCmd reconstructs the seed window, off the UI goroutine.
 //
-// Two searches, because the dashboard's own is open-only and a month described
-// without the pull requests that were merged in it is a month with its best
-// days left out. The closed one is best-effort: if it fails, what the open one
-// found is still worth showing.
+// Deliberately not scoped to the dashboard's mode: the feed spans every mode by
+// design, so reconstructing it from one of them would leave out most of what
+// the window held. See gh.BackfillSearches.
+//
+// Each search is best-effort. They overlap, so a pull request found twice is
+// only seeded once, and a failure in one still leaves what the other found
+// worth showing — only a complete washout is reported as an error.
 func (m Model) backfillCmd() tea.Cmd {
 	cfg := m.cfg
 	started := m.startedAt
 	return func() tea.Msg {
-		// Generous. Both searches are paginated, and each page asks for far
+		// Generous. The searches are paginated, and each page asks for far
 		// more than a poll does.
 		ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 		defer cancel()
 		since := started.Add(-cfg.Seed)
 
-		open, err := cfg.Client.Backfill(ctx, cfg.Mode.Query(cfg.Extra), cfg.Max)
-		if err != nil {
-			return backfillDoneMsg{err: err}
-		}
-		prs, viewer := open.PRs, open.Viewer
-
-		if done, err := cfg.Client.Backfill(ctx, cfg.Mode.ClosedQuery(cfg.Extra, since), cfg.Max); err == nil {
-			prs = append(prs, done.PRs...)
-			if viewer == "" {
-				viewer = done.Viewer
+		var (
+			prs      []gh.PR
+			viewer   string
+			firstErr error
+			seen     = map[string]bool{}
+		)
+		for _, q := range gh.BackfillSearches(cfg.Extra, since) {
+			res, err := cfg.Client.Backfill(ctx, q, cfg.Max)
+			if err != nil {
+				if firstErr == nil {
+					firstErr = err
+				}
+				continue
 			}
+			if viewer == "" {
+				viewer = res.Viewer
+			}
+			for _, p := range res.PRs {
+				if seen[p.Key()] {
+					continue
+				}
+				seen[p.Key()] = true
+				prs = append(prs, p)
+			}
+		}
+		if len(prs) == 0 && firstErr != nil {
+			return backfillDoneMsg{err: firstErr}
 		}
 		return backfillDoneMsg{events: gh.Seed(prs, since, viewer)}
 	}

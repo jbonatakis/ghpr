@@ -75,21 +75,32 @@ func (m Mode) Query(extra string) string {
 	return strings.TrimSpace(b.String())
 }
 
-// ClosedQuery finds the pull requests that finished recently.
+// BackfillSearches are the searches that fill the activity feed in at startup.
 //
-// The dashboard itself only ever wants open ones, but a backfill that skips
-// what has already been merged is describing a month with its best days left
-// out — for anyone who ships, that is most of the activity there was.
+// They are deliberately not the dashboard's search. The feed is a session-wide
+// record that spans every mode — switching mode does not un-happen what it saw
+// — so filling it from whichever mode happens to be selected contradicts the
+// thing it is. A dashboard opened on your own pull requests would reconstruct a
+// morning with everything you reviewed left out of it.
 //
-// GitHub's search dates are days, not instants, so this rounds the window down
-// to midnight and lets Seed discard whatever falls outside the real one.
-func (m Mode) ClosedQuery(extra string, since time.Time) string {
-	var b strings.Builder
-	b.WriteString("is:pr archived:false is:closed ")
-	b.WriteString(m.qualifier())
-	b.WriteString("updated:>=" + since.UTC().Format("2006-01-02") + " ")
-	b.WriteString(strings.TrimSpace(extra))
-	return strings.TrimSpace(b.String())
+// Two of them because GitHub search cannot express the union: involves:@me
+// covers authoring, commenting, assignment and mentions, but not a review
+// merely requested of you and not yet acted on. Neither says is:open, so what
+// was merged inside the window comes back too.
+//
+// Both are bounded by updated:>= rather than left open, which is what keeps
+// this affordable: a pull request untouched inside the window has nothing to
+// contribute to the seed, so fetching it is pure waste. GitHub's search dates
+// are days rather than instants, so the bound is rounded down to midnight and
+// Seed discards whatever falls outside the real window.
+func BackfillSearches(extra string, since time.Time) []string {
+	base := "is:pr archived:false updated:>=" + since.UTC().Format("2006-01-02") + " "
+	extra = strings.TrimSpace(extra)
+	out := make([]string, 0, 2)
+	for _, who := range []string{"involves:@me ", "review-requested:@me "} {
+		out = append(out, strings.TrimSpace(base+who+extra))
+	}
+	return out
 }
 
 func (m Mode) qualifier() string {

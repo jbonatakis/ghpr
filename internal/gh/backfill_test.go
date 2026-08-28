@@ -158,21 +158,48 @@ func TestBackfillSeedsWhatThePollCannotSee(t *testing.T) {
 	t.Logf("a single pull request seeded %d events", len(got))
 }
 
-// The closed search is the other half: a month described without what was
-// merged in it is a month with its best days left out.
-func TestClosedQueryLooksForFinishedWork(t *testing.T) {
+// The feed spans every mode by design, so the searches that fill it in must
+// not be scoped to whichever one the dashboard happens to be showing.
+func TestBackfillSearchesCoverEverythingYouTouch(t *testing.T) {
 	since := time.Date(2026, 7, 29, 15, 0, 0, 0, time.UTC)
-	q := ModeAuthored.ClosedQuery("", since)
+	got := BackfillSearches("", since)
 
-	for _, want := range []string{"is:pr", "is:closed", "author:@me", "updated:>=2026-07-29"} {
-		if !strings.Contains(q, want) {
-			t.Errorf("closed query %q is missing %q", q, want)
+	if len(got) != 2 {
+		t.Fatalf("got %d searches: %q", len(got), got)
+	}
+	joined := strings.Join(got, " || ")
+	// involves:@me covers authoring, commenting, assignment and mentions, but
+	// not a review merely requested and not yet acted on.
+	for _, want := range []string{"involves:@me", "review-requested:@me"} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("nothing searches %s: %q", want, got)
 		}
 	}
-	if strings.Contains(q, "is:open") {
-		t.Errorf("closed query asks for open pull requests: %q", q)
+	for _, q := range got {
+		if !strings.Contains(q, "is:pr") || !strings.Contains(q, "archived:false") {
+			t.Errorf("%q is not a pull request search", q)
+		}
+		// Neither is:open nor is:closed: what finished inside the window is
+		// exactly the part an open-only search would leave out.
+		if strings.Contains(q, "is:open") || strings.Contains(q, "is:closed") {
+			t.Errorf("%q restricts the lifecycle and would miss half the window", q)
+		}
+		// Bounded, or the backfill fetches pull requests that cannot possibly
+		// contribute a line to it.
+		if !strings.Contains(q, "updated:>=2026-07-29") {
+			t.Errorf("%q is unbounded", q)
+		}
+		if strings.Contains(q, "author:@me") {
+			t.Errorf("%q is scoped to one mode", q)
+		}
 	}
-	if q := ModeReviewRequested.ClosedQuery("org:acme", since); !strings.Contains(q, "review-requested:@me") || !strings.Contains(q, "org:acme") {
-		t.Errorf("the mode or the extra qualifiers were lost: %q", q)
+}
+
+func TestBackfillSearchesKeepTheUsersOwnQualifiers(t *testing.T) {
+	since := time.Date(2026, 7, 29, 15, 0, 0, 0, time.UTC)
+	for _, q := range BackfillSearches("org:acme", since) {
+		if !strings.Contains(q, "org:acme") {
+			t.Errorf("-query was dropped from %q", q)
+		}
 	}
 }

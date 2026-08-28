@@ -292,21 +292,38 @@ watched change between two of its own polls. Below it is reconstruction: the
 same one search, read for the timestamps GitHub attaches to what it returns.
 Both are real, but they are not the same kind of claim, and the line says so.
 
-It costs extra, once. The two searches run at launch and are far heavier than
-a poll — nested thread comments multiply quickly — so pages are small and the
-work is done before the dashboard settles. Across a session left open for hours
+It costs extra, once. The searches run at launch and are far heavier than a
+poll — nested thread comments multiply quickly — so pages are small and the
+work is done before the dashboard settles. Each is best-effort: if one fails,
+what the other found is still shown. Across a session left open for hours
 it is noise; `-why-seed` prints what it actually cost on your account, and
 `-seed 0` skips it entirely.
 
-The backfill is **not** the polling query. It is a second, deliberately
-expensive pair of searches that run once at launch and never again, so the
-thirty-second poll stays at 2 points while the backfill gets to see an actual
-month:
+The backfill is **not** the polling query, and it is **not scoped to the
+current mode**. It is a pair of deliberately expensive searches that run once
+at launch and never again, so the thirty-second poll stays at 2 points while
+the backfill gets to see an actual month:
 
-- **Pull requests that already finished.** The dashboard is `is:open`, so a
-  backfill using it would describe your month with everything you merged left
-  out. A second search covers what closed inside the window, and those get
-  `✔ merged` and `× closed` lines of their own.
+```
+is:pr archived:false updated:>=2026-07-29 involves:@me
+is:pr archived:false updated:>=2026-07-29 review-requested:@me
+```
+
+- **Everything you touched, not just the current mode.** The feed spans every
+  mode by design — switching mode does not un-happen what it saw — so filling
+  it from whichever one happens to be selected contradicts the thing it is. A
+  dashboard opened on `authored` would reconstruct a morning with everything
+  you reviewed left out of it. Two searches because GitHub cannot express the
+  union: `involves:@me` covers authoring, commenting, assignment and mentions,
+  but not a review merely requested of you and not yet acted on. They overlap,
+  and anything found by both is seeded once.
+- **Pull requests that already finished.** Neither search says `is:open`, so
+  what was merged or closed inside the window comes back too, with `✔ merged`
+  and `× closed` lines of its own — for anyone who ships, that is most of the
+  activity there was.
+- **Only what could contribute.** Both are bounded by `updated:>=`, because a
+  pull request untouched inside the window has nothing to add to the seed and
+  fetching it is pure waste. That bound is what pays for the wider scope.
 - **Comments inside review threads**, with the dates that let them be placed.
   Where review happens inline rather than in the conversation tab, this is the
   discussion — the polling query can only count it.

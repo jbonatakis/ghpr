@@ -187,26 +187,45 @@ func explainSeed(cfg ui.Config) error {
 	}
 	since := time.Now().Add(-window)
 
-	res, err := cfg.Client.Backfill(ctx, cfg.Mode.Query(cfg.Extra), cfg.Max)
-	if err != nil {
-		return err
-	}
-	open := len(res.PRs)
-	if done, err := cfg.Client.Backfill(ctx, cfg.Mode.ClosedQuery(cfg.Extra, since), cfg.Max); err != nil {
-		fmt.Printf("NOTE: the closed-pull-request search failed (%s), so anything\n"+
-			"      merged or closed in the window is missing from this account\n\n",
-			gh.CleanMessage(err.Error(), 80))
-	} else {
-		res.PRs = append(res.PRs, done.PRs...)
+	var (
+		res  gh.Result
+		seen = map[string]bool{}
+	)
+	for _, q := range gh.BackfillSearches(cfg.Extra, since) {
+		found, err := cfg.Client.Backfill(ctx, q, cfg.Max)
+		if err != nil {
+			fmt.Printf("NOTE: the search %q failed (%s), so whatever only it\n"+
+				"      would have found is missing from this account\n\n",
+				q, gh.CleanMessage(err.Error(), 80))
+			continue
+		}
+		if res.Viewer == "" {
+			res.Viewer = found.Viewer
+		}
+		res.RateLimit = found.RateLimit
+		for _, p := range found.PRs {
+			if seen[p.Key()] {
+				continue
+			}
+			seen[p.Key()] = true
+			res.PRs = append(res.PRs, p)
+		}
 	}
 
-	fmt.Printf("%s · %s · %d open and %d recently closed pull requests\n",
-		res.Viewer, cfg.Mode, open, len(res.PRs)-open)
+	var closed int
+	for _, p := range res.PRs {
+		if p.State != "" {
+			closed++
+		}
+	}
+	fmt.Printf("%s · %d pull requests touched in the window (%d of them finished)\n",
+		res.Viewer, len(res.PRs), closed)
+	fmt.Println("searched:")
+	for _, q := range gh.BackfillSearches(cfg.Extra, since) {
+		fmt.Printf("    %s\n", q)
+	}
 	fmt.Printf("seed window %s — nothing before %s can be reached\n",
 		tidy(window), since.Local().Format("2006-01-02 15:04"))
-	if !res.Complete {
-		fmt.Printf("NOTE: the search was cut short by -max %d, so this is not the whole list\n", cfg.Max)
-	}
 	fmt.Println()
 
 	when := func(at time.Time) string {
