@@ -47,6 +47,7 @@ query($q: String!, $n: Int!, $after: String) {
           nodes {
             commit {
               oid
+              committedDate
               author { user { login } }
               statusCheckRollup {
                 state
@@ -54,8 +55,8 @@ query($q: String!, $n: Int!, $after: String) {
                   totalCount
                   nodes {
                     __typename
-                    ... on CheckRun { name status conclusion detailsUrl }
-                    ... on StatusContext { context state targetUrl }
+                    ... on CheckRun { name status conclusion detailsUrl completedAt }
+                    ... on StatusContext { context state targetUrl createdAt }
                   }
                 }
               }
@@ -167,8 +168,9 @@ type prNode struct {
 	Commits struct {
 		Nodes []struct {
 			Commit struct {
-				OID    string `json:"oid"`
-				Author struct {
+				OID           string `json:"oid"`
+				CommittedDate string `json:"committedDate"`
+				Author        struct {
 					User struct {
 						Login string `json:"login"`
 					} `json:"user"`
@@ -178,14 +180,16 @@ type prNode struct {
 					Contexts struct {
 						TotalCount int `json:"totalCount"`
 						Nodes      []struct {
-							Typename   string `json:"__typename"`
-							Name       string `json:"name"`
-							Status     string `json:"status"`
-							Conclusion string `json:"conclusion"`
-							DetailsURL string `json:"detailsUrl"`
-							Context    string `json:"context"`
-							State      string `json:"state"`
-							TargetURL  string `json:"targetUrl"`
+							Typename    string `json:"__typename"`
+							Name        string `json:"name"`
+							Status      string `json:"status"`
+							Conclusion  string `json:"conclusion"`
+							DetailsURL  string `json:"detailsUrl"`
+							Context     string `json:"context"`
+							State       string `json:"state"`
+							TargetURL   string `json:"targetUrl"`
+							CompletedAt string `json:"completedAt"`
+							CreatedAt   string `json:"createdAt"`
 						} `json:"nodes"`
 					} `json:"contexts"`
 				} `json:"statusCheckRollup"`

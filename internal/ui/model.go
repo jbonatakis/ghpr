@@ -94,6 +94,11 @@ type Config struct {
 	Extra    string
 	Prefs    config.Config
 
+	// Seed is how far back the feed is filled in from the first poll, so a
+	// dashboard just opened is not blank about the hour you missed. Zero
+	// leaves it empty until something actually changes.
+	Seed time.Duration
+
 	// Links turns pull request references into clickable terminal hyperlinks.
 	Links bool
 }
@@ -139,6 +144,12 @@ type Model struct {
 	eventsFocus bool
 	eventCursor int
 	eventTop    int
+
+	// seeded records that the backlog has already been filled in once. It is
+	// per session rather than per search: switching mode starts a new list,
+	// but the feed spans them all, and seeding again would repeat the history
+	// of every pull request the two modes have in common.
+	seeded bool
 
 	// absent tracks pull requests that dropped out of the search but have not
 	// been accounted for. They stay on screen and are looked up directly, so a
@@ -258,8 +269,12 @@ func (m *Model) savePrefs() {
 		HiddenPRs:      keysOf(m.hiddenPRs),
 		Mode:           m.cfg.Mode.String(),
 		Sort:           m.sortBy.key(),
-		Grouped:        m.grouped,
-		HideDrafts:     m.hideDrafts,
+		// Carried through rather than derived: the seed window has no in-app
+		// control, so writing the struct without it would quietly erase the
+		// user's setting the first time they folded a repo.
+		Seed:       m.cfg.Prefs.Seed,
+		Grouped:    m.grouped,
+		HideDrafts: m.hideDrafts,
 	}
 	m.cfg.Prefs = prefs
 	if err := prefs.Save(); err != nil {
@@ -427,13 +442,24 @@ func (m Model) applyFetch(msg fetchDoneMsg) (tea.Model, tea.Cmd) {
 		next, verify = m.holdVanished(prev, next, msg.res.Complete)
 	}
 
-	events := gh.Diff(prev, next, gh.DiffOpts{
+	var events []gh.Event
+	if !m.seeded && m.cfg.Seed > 0 {
+		m.seeded = true
+		// The first poll is the only one that can say anything about the time
+		// before it, and it says it from GitHub's own timestamps rather than
+		// from a comparison. The marker goes on the end so the feed shows
+		// where the reconstruction stops and the watching starts.
+		if seed := gh.Seed(next, msg.res.FetchedAt.Add(-m.cfg.Seed), msg.res.Viewer); len(seed) > 0 {
+			events = append(seed, gh.SessionEvent(msg.res.FetchedAt))
+		}
+	}
+	events = append(events, gh.Diff(prev, next, gh.DiffOpts{
 		Now:          msg.res.FetchedAt,
 		PrevComplete: m.lastComplete,
 		Mode:         m.cfg.Mode,
 		Viewer:       msg.res.Viewer,
-	})
-	m.record(events, msg.res.FetchedAt)
+	})...)
+	m.record(events)
 
 	selected := m.selectedKey()
 	m.prs = next
@@ -556,19 +582,27 @@ func (m Model) applyVerify(msg verifyDoneMsg) Model {
 	}
 	selected := m.selectedKey()
 	m.prs = kept
-	m.record(events, now)
+	m.record(events)
 	m.rebuild()
 	m.restoreCursor(selected)
 	return m
 }
 
 // record files activity events and marks the pull requests they touch.
-func (m *Model) record(events []gh.Event, at time.Time) {
+//
+// Each event is marked at its own timestamp rather than at the moment it was
+// filed. For a poll the two are the same, but a seeded event carries a time
+// from before the dashboard opened, and the gutter dot means "changed in the
+// last minute" — so only the seeded lines recent enough to deserve one get it.
+func (m *Model) record(events []gh.Event) {
 	if len(events) == 0 {
 		return
 	}
 	for _, e := range events {
-		m.changed[e.Key] = at
+		if e.Key == "" {
+			continue // the session marker names no pull request
+		}
+		m.changed[e.Key] = e.At
 	}
 	m.events = append(m.events, events...)
 	if len(m.events) > maxEvents {

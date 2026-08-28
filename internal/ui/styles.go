@@ -138,6 +138,9 @@ func eventStyle(k gh.EventKind) lipgloss.Style {
 	case gh.EventMention:
 		// A louder comment, because that is what it is.
 		return lipgloss.NewStyle().Foreground(colYellow).Bold(true)
+	case gh.EventSessionStart:
+		// A boundary, not an event: it should recede.
+		return stFaint
 	}
 	return stMuted
 }

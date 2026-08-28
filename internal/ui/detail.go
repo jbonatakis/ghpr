@@ -230,8 +230,12 @@ func (m Model) renderEventRow(e gh.Event, sel bool, refWidth, actorWidth int) st
 	b.WriteString(p.sep())
 
 	// Padded after linking: the escape sequence has no width, so the cell
-	// must be measured with visibleWidth.
-	refText := link(m.cfg.Links, e.URL, eventRefText(shortRepo(e.Repo), e.Number, refWidth))
+	// must be measured with visibleWidth. An event with no number is about the
+	// session rather than a pull request, and names nothing in this column.
+	refText := ""
+	if e.Number != 0 {
+		refText = link(m.cfg.Links, e.URL, eventRefText(shortRepo(e.Repo), e.Number, refWidth))
+	}
 	b.WriteString(p.cell(stMuted, padVisible(refText, refWidth)))
 	b.WriteString(p.sep())
 	b.WriteString(p.sep())
@@ -345,6 +349,13 @@ func (m Model) helpView() string {
 	b.WriteString("\n\n")
 	b.WriteString(stFaint.Render(fmt.Sprintf("   polling every %s · about %d of 5000 rate-limit points per hour",
 		m.cfg.Interval, m.pointsPerHour())))
+	b.WriteString("\n")
+	if m.cfg.Seed > 0 {
+		b.WriteString(stFaint.Render(fmt.Sprintf(
+			"   feed filled in from the last %s at startup; -seed 0 starts it empty", tidyDuration(m.cfg.Seed))))
+	} else {
+		b.WriteString(stFaint.Render("   feed starts empty; -seed 1h fills it in from the last hour"))
+	}
 	b.WriteString("\n")
 	if path, err := config.Path(); err == nil {
 		b.WriteString(stFaint.Render("   settings saved to " + path))

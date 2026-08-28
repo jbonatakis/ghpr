@@ -27,6 +27,7 @@ func main() {
 		max      = flag.Int("max", 200, "maximum pull requests to track")
 		modeName = flag.String("mode", "authored", "which PRs to watch: authored, review-requested, involved")
 		extra    = flag.String("query", "", "extra GitHub search qualifiers, e.g. \"org:acme\"")
+		seed     = flag.Duration("seed", time.Hour, "fill the activity feed in from this far back at startup (0 to start blank)")
 		api      = flag.String("api", "", "GraphQL endpoint, for GitHub Enterprise Server")
 		once     = flag.Bool("once", false, "print a one-shot plain-text snapshot and exit")
 		showCfg  = flag.Bool("config", false, "print the config file path and exit")
@@ -59,6 +60,16 @@ func main() {
 	if !flagWasSet("mode") && prefs.Mode != "" {
 		*modeName = prefs.Mode
 	}
+	if !flagWasSet("seed") {
+		if d, err := parseSeed(prefs.Seed); err != nil {
+			fmt.Fprintln(os.Stderr, "ghpr: ignoring seed in config:", err)
+		} else if d >= 0 {
+			*seed = d
+		}
+	}
+	if *seed < 0 {
+		*seed = 0
+	}
 
 	mode, err := parseMode(*modeName)
 	if err != nil {
@@ -85,6 +96,7 @@ func main() {
 		Extra:    *extra,
 		Prefs:    prefs,
 		Links:    *links,
+		Seed:     *seed,
 	}
 
 	if *once {
@@ -119,6 +131,24 @@ func usage() {
 	if path, err := config.Path(); err == nil {
 		fmt.Fprintf(os.Stderr, "config: %s (edit organizations in-app with O)\n", path)
 	}
+}
+
+// parseSeed reads the saved seed window. A negative duration is returned for
+// "nothing saved", which leaves the flag's default in place — distinct from a
+// saved "0", which is a deliberate choice to start the feed blank.
+func parseSeed(s string) (time.Duration, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return -1, nil
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return -1, fmt.Errorf("%q is not a duration like \"1h\"", s)
+	}
+	if d < 0 {
+		return 0, nil
+	}
+	return d, nil
 }
 
 func parseMode(s string) (gh.Mode, error) {

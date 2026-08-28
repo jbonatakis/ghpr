@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/mattn/go-runewidth"
@@ -46,6 +47,19 @@ func plural(n int, unit string) string {
 		return fmt.Sprintf("1 %s", unit)
 	}
 	return fmt.Sprintf("%d %ss", n, unit)
+}
+
+// tidyDuration drops the zero tail Go leaves on a round duration, so an hour
+// set with -seed 1h reads back as "1h" rather than "1h0m0s".
+func tidyDuration(d time.Duration) string {
+	s := d.String()
+	if strings.HasSuffix(s, "m0s") {
+		s = strings.TrimSuffix(s, "0s")
+	}
+	if strings.HasSuffix(s, "h0m") {
+		s = strings.TrimSuffix(s, "0m")
+	}
+	return s
 }
 
 // pad right-pads to exactly w display cells, truncating with an ellipsis.

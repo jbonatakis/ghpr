@@ -256,12 +256,15 @@ func convert(n prNode, viewer string) PR {
 		}
 	}
 
-	// The newest conversation comment, for attributing comment activity.
+	// The newest conversation comments, for attributing comment activity and
+	// for seeding the feed with the ones that predate the dashboard.
 	for _, c := range n.Comments.Nodes {
 		if c.Author.Login == "" {
 			continue
 		}
-		if at := parseTime(c.CreatedAt); at.After(p.LastCommentAt) {
+		at := parseTime(c.CreatedAt)
+		p.RecentComments = append(p.RecentComments, Comment{By: c.Author.Login, At: at})
+		if at.After(p.LastCommentAt) {
 			p.LastCommentAt, p.LastCommentBy = at, c.Author.Login
 		}
 	}
@@ -288,6 +291,11 @@ func convert(n prNode, viewer string) PR {
 	if len(n.Commits.Nodes) > 0 {
 		p.HeadOID = n.Commits.Nodes[0].Commit.OID
 		p.PushedBy = n.Commits.Nodes[0].Commit.Author.User.Login
+		// The commit's own date, not when it was pushed. GitHub's pushedDate is
+		// deprecated and frequently null, and this errs the safe way: a commit
+		// written days ago and pushed a minute ago is left out of the seed
+		// rather than announced as something that never happened.
+		p.PushedAt = parseTime(n.Commits.Nodes[0].Commit.CommittedDate)
 		if roll := n.Commits.Nodes[0].Commit.StatusCheckRollup; roll != nil {
 			for _, c := range roll.Contexts.Nodes {
 				chk := Check{Name: c.Name, URL: c.DetailsURL, Raw: c.Conclusion}
@@ -301,6 +309,15 @@ func convert(n prNode, viewer string) PR {
 					}
 				}
 				p.Checks = append(p.Checks, chk)
+				// A check run reports when it finished; a status context only
+				// when it was posted. Either dates the rollup well enough to
+				// place one line in the seeded feed.
+				if at := parseTime(c.CompletedAt); at.After(p.ChecksAt) {
+					p.ChecksAt = at
+				}
+				if at := parseTime(c.CreatedAt); at.After(p.ChecksAt) {
+					p.ChecksAt = at
+				}
 				switch chk.State {
 				case CheckSuccess:
 					p.ChecksPassed++
@@ -330,18 +347,33 @@ func noteMentions(p *PR, n prNode, viewer string) {
 	if viewer == "" {
 		return
 	}
-	note := func(who string, at time.Time, text string) {
+	note := func(who string, at time.Time, text string) bool {
 		if who == "" || strings.EqualFold(who, viewer) || at.IsZero() {
-			return
+			return false
 		}
-		if at.After(p.LastMentionAt) && Mentions(text, viewer) {
+		if !Mentions(text, viewer) {
+			return false
+		}
+		p.Mentions = append(p.Mentions, Mention{By: who, At: at})
+		if at.After(p.LastMentionAt) {
 			p.LastMentionAt, p.LastMentionBy = at, who
 		}
+		return true
 	}
 
 	note(p.Author, p.CreatedAt, n.BodyText)
 	for _, c := range n.Comments.Nodes {
-		note(c.Author.Login, parseTime(c.CreatedAt), c.BodyText)
+		at := parseTime(c.CreatedAt)
+		if !note(c.Author.Login, at, c.BodyText) {
+			continue
+		}
+		// Matched by author and time rather than by position: the comment list
+		// skips authorless entries, so the two are not the same length.
+		for i := range p.RecentComments {
+			if p.RecentComments[i].By == c.Author.Login && p.RecentComments[i].At.Equal(at) {
+				p.RecentComments[i].Mention = true
+			}
+		}
 	}
 	for _, r := range n.LatestReviews.Nodes {
 		note(r.Author.Login, parseTime(r.SubmittedAt), r.BodyText)

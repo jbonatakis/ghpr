@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/ansi"
@@ -131,7 +130,7 @@ func TestNewActivityDoesNotYankTheFeedYouAreReading(t *testing.T) {
 		t.Fatalf("cursor landed on %q, expected event 24", holding)
 	}
 
-	m.record([]gh.Event{eventFor("acme/starfield", 99, "just landed")}, time.Now())
+	m.record([]gh.Event{eventFor("acme/starfield", 99, "just landed")})
 
 	if got := m.selectedEvent().Text; got != holding {
 		t.Errorf("the cursor slid from %q to %q when a poll arrived", holding, got)
@@ -146,7 +145,7 @@ func TestNewActivityDoesNotYankTheFeedYouAreReading(t *testing.T) {
 func TestAFeedAtTheTopKeepsFollowingLive(t *testing.T) {
 	m := inFeed(t, 30)
 
-	m.record([]gh.Event{eventFor("acme/starfield", 99, "just landed")}, time.Now())
+	m.record([]gh.Event{eventFor("acme/starfield", 99, "just landed")})
 
 	if m.eventCursor != 0 {
 		t.Errorf("cursor drifted to %d; a feed left at the top should stay there", m.eventCursor)

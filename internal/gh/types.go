@@ -52,6 +52,24 @@ type Reviewer struct {
 
 func (r Reviewer) Pending() bool { return r.State == "PENDING" }
 
+// Comment is one conversation comment the search returned. Only the newest
+// few come back, which is enough to attribute activity and to seed the feed,
+// and never enough to call it the pull request's history.
+type Comment struct {
+	By string
+	At time.Time
+
+	// Mention marks a comment that named the viewer, so the feed can show the
+	// louder line instead of this one rather than both.
+	Mention bool
+}
+
+// Mention is one @mention of the viewer: when it was written, and by whom.
+type Mention struct {
+	By string
+	At time.Time
+}
+
 type Label struct {
 	Name  string
 	Color string // hex, no leading #
@@ -155,6 +173,15 @@ type PR struct {
 	// review thread, is not visible here.
 	LastMentionBy string
 	LastMentionAt time.Time
+
+	// Dated history from this one snapshot, used to seed the feed at startup
+	// with what happened before the dashboard was open. Every one of these is
+	// a lower bound: the query returns the newest few comments and one review
+	// per reviewer, not everything that happened.
+	RecentComments []Comment
+	Mentions       []Mention
+	PushedAt       time.Time // the head commit's own commit date
+	ChecksAt       time.Time // when the newest check on that commit finished
 
 	Labels    []Label
 	Reviewers []Reviewer

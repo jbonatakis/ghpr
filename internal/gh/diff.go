@@ -21,6 +21,11 @@ const (
 	EventPush
 	EventReviewRequested
 	EventMention
+
+	// EventSessionStart divides reconstructed history from the polled record.
+	// It names no pull request: it is a line in the feed rather than something
+	// that happened to one.
+	EventSessionStart
 )
 
 func (k EventKind) Icon() string {
@@ -49,6 +54,8 @@ func (k EventKind) Icon() string {
 		return "◷"
 	case EventMention:
 		return "@"
+	case EventSessionStart:
+		return "·"
 	}
 	return "."
 }

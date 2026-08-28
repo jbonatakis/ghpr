@@ -28,10 +28,16 @@ type Config struct {
 	HiddenRepos []string `json:"hiddenRepos"`
 	HiddenPRs   []string `json:"hiddenPRs"`
 
-	Mode       string `json:"mode,omitempty"`
-	Sort       string `json:"sort,omitempty"`
-	Grouped    bool   `json:"grouped"`
-	HideDrafts bool   `json:"hideDrafts"`
+	Mode string `json:"mode,omitempty"`
+	Sort string `json:"sort,omitempty"`
+
+	// Seed is how far back to fill the activity feed in at startup, as a Go
+	// duration such as "1h". Empty keeps the built-in default; "0" starts the
+	// feed blank. The -seed flag overrides it for one run.
+	Seed string `json:"seed,omitempty"`
+
+	Grouped    bool `json:"grouped"`
+	HideDrafts bool `json:"hideDrafts"`
 }
 
 // Defaults is the configuration used before anything has been saved. Load
@@ -41,6 +47,7 @@ func Defaults() Config {
 		HiddenOrgs: nil,
 		Mode:       "authored",
 		Sort:       "attention",
+		Seed:       "1h",
 		Grouped:    true,
 		HideDrafts: false,
 	}

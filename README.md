@@ -53,6 +53,7 @@ ghpr -once                            # plain-text snapshot, no TUI
 | `-query` | – | extra search qualifiers, e.g. `org:acme` |
 | `-api` | – | GraphQL endpoint, for GitHub Enterprise Server |
 | `-config` | – | print the config file path and exit |
+| `-seed` | `1h` | fill the activity feed in from this far back at startup (`0` starts it empty) |
 | `-links` | `true` | clickable pull request references (`-links=false` to disable) |
 | `-once` | – | print a snapshot and exit — good for scripts and cron |
 
@@ -247,6 +248,56 @@ inside a *review* keeps the verdict, though — `★ changes requested` and
 A description that names you is dated by when the pull request was opened, not
 by when it was last touched. Dating it by the update time would re-announce the
 same standing mention on every push and every comment for the life of the branch.
+
+### Opening onto the last hour
+
+A dashboard you have just launched used to start with an empty feed and tell
+you nothing about the hour you spent away from it. It now fills itself in from
+the first poll — `-seed 1h` by default, `-seed 0` to start blank, and a `seed`
+key in the config file if you would rather not type it every time:
+
+```
+────────── activity ───────────────────────────────────────────────────────────
+ 10:30:00                                                  · ghpr started
+ 10:27:00  starfield#44                                    @ mentioned you        dana-quill
+ 10:21:00  design-docs#9                                   ~ checks passing
+ 10:16:00  starfield#44                                    » new comment          riley-shaw
+ 10:08:00  starfield#44                                    ★ changes requested    dana-quill
+ 10:04:00  design-docs#9                                   ↑ new commits
+ 10:03:00  design-docs#9                                   + opened               sam-okafor
+```
+
+`· ghpr started` is the boundary. Above it is the ordinary feed — things ghpr
+watched change between two of its own polls. Below it is reconstruction: the
+same one search, read for the timestamps GitHub attaches to what it returns.
+Both are real, but they are not the same kind of claim, and the line says so.
+
+It costs nothing. The dates come from fields the query was already fetching,
+plus two scalars (`committedDate` on the head commit, `completedAt` on each
+check), and GraphQL bills for nodes rather than scalar fields.
+
+**It is a floor, not a record.** One search returns the newest three
+conversation comments per pull request and one review per reviewer, so a busy
+hour is under-reported — and comments inside review threads carry no dates in
+this query at all, so none of them appear. Three things cannot be seeded
+whatever the window:
+
+- `✔ merged` / `× closed` — the search is `is:open`, so those pull requests are
+  not in the response to read dates from.
+- `! now conflicting` — `mergeable` is a current state with no timestamp.
+- `◷ review requested` — `reviewRequests` carries no date; only GitHub's
+  timeline API has one, and that is a query per pull request.
+
+Nothing is guessed to fill those gaps: every seeded line has an API timestamp
+behind it, and what cannot be dated is simply absent. Seeded comments are dated
+one by one rather than tallied as `3 new comments`, because unlike a poll — which
+only knows the difference between two totals — the seed has a time and an author
+for each.
+
+The gutter `●` still means *"changed in the last minute"*, so seeded history
+does not light the whole list up at launch; only the parts of it that really are
+that recent. Seeding happens once per session, not once per mode: the feed spans
+every mode, and the searches overlap.
 
 ### Reading back through the feed
 
