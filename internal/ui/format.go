@@ -134,6 +134,21 @@ func eventRefText(repo string, number, w int) string {
 	return runewidth.Truncate(repo, w-nw, "…") + num
 }
 
+// eventTime says when an event happened, in the width of a clock.
+//
+// Anything from today keeps its exact time, which is what a live session wants
+// and what the feed held before it could be backfilled. Older lines become an
+// age instead, because a bare "16:26" says nothing useful about a day three
+// weeks ago — and worse, reads as out of order next to this morning's 09:58
+// when it is really the older of the two.
+func eventTime(at, now time.Time) string {
+	at, now = at.Local(), now.Local()
+	if at.Year() == now.Year() && at.YearDay() == now.YearDay() {
+		return at.Format("15:04:05")
+	}
+	return padLeft(compactAge(now.Sub(at)), evTimeWidth)
+}
+
 // Activity line columns: timestamp, reference, description, actor.
 const (
 	evTimeWidth  = 8

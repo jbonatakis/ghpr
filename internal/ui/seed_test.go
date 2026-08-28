@@ -334,3 +334,84 @@ func TestSeedingARealPayload(t *testing.T) {
 	}
 	t.Logf("seeded %d events from %d pull requests: %v", len(got), len(res.PRs), kinds)
 }
+
+// A backfilled feed spans days, and a bare clock time cannot say which one.
+// Worse than useless: yesterday afternoon reads as newer than this morning,
+// so a correctly ordered feed looks shuffled.
+func TestEventTimeDistinguishesTodayFromEarlier(t *testing.T) {
+	now := time.Date(2026, 8, 28, 15, 27, 36, 0, time.Local)
+
+	for _, tc := range []struct {
+		name string
+		at   time.Time
+		want string
+	}{
+		{"this second", now, "15:27:36"},
+		{"this morning", time.Date(2026, 8, 28, 9, 58, 5, 0, time.Local), "09:58:05"},
+		{"just after midnight today", time.Date(2026, 8, 28, 0, 0, 1, 0, time.Local), "00:00:01"},
+		{"yesterday afternoon", time.Date(2026, 8, 27, 16, 26, 11, 0, time.Local), "23h"},
+		{"three days ago", now.AddDate(0, 0, -3), "3d"},
+		{"three weeks ago", now.AddDate(0, 0, -21), "3w"},
+		{"last year", now.AddDate(-1, 0, 0), "1y"},
+	} {
+		got := strings.TrimSpace(eventTime(tc.at, now))
+		if got != tc.want {
+			t.Errorf("%s: eventTime = %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
+// Whatever it renders has to stay inside its column, or every line after it
+// shifts.
+func TestEventTimeKeepsItsColumn(t *testing.T) {
+	now := time.Date(2026, 8, 28, 15, 27, 36, 0, time.Local)
+	for _, at := range []time.Time{
+		now,
+		now.Add(-time.Hour),
+		now.AddDate(0, 0, -1),
+		now.AddDate(0, 0, -400),
+		now.AddDate(-9, 0, 0),
+	} {
+		if got := len(eventTime(at, now)); got != evTimeWidth {
+			t.Errorf("eventTime(%s) is %d cells, want %d", at, got, evTimeWidth)
+		}
+	}
+}
+
+// The whole point: a feed read top to bottom must run backwards in time, and
+// look like it does.
+func TestABackfilledFeedReadsInOrder(t *testing.T) {
+	now := time.Now()
+	m := newSeeding(t, 720*time.Hour)
+
+	res := history(now)
+	// Spread across days, the case that made the screenshot look shuffled.
+	res.PRs[0].CreatedAt = now.AddDate(0, 0, -20)
+	res.PRs[0].PushedAt = now.AddDate(0, 0, -18)
+	res.PRs[0].ChecksAt = now.AddDate(0, 0, -18)
+	res.PRs[0].Reviewers = []gh.Reviewer{{Login: "dana-quill", State: "APPROVED", At: now.AddDate(0, 0, -9)}}
+	res.PRs[0].RecentComments = []gh.Comment{
+		{By: "github-actions", At: now.AddDate(0, 0, -14)},
+		{By: "github-actions", At: now.AddDate(0, 0, -3)},
+	}
+
+	m = update(m, fetchDoneMsg{seq: m.fetchSeq, res: res})
+	m.now = now
+
+	for i := 1; i < len(m.events); i++ {
+		if m.events[i].At.Before(m.events[i-1].At) {
+			t.Fatalf("the feed is out of order at %d: %q then %q",
+				i, m.events[i-1].Text, m.events[i].Text)
+		}
+	}
+
+	// And nothing older than today may show a bare clock time, which is what
+	// made a correct order look wrong.
+	for _, e := range m.events {
+		stamp := strings.TrimSpace(eventTime(e.At, now))
+		sameDay := e.At.Local().YearDay() == now.Local().YearDay() && e.At.Local().Year() == now.Local().Year()
+		if !sameDay && strings.Contains(stamp, ":") {
+			t.Errorf("%q happened on another day but shows the clock time %q", e.Text, stamp)
+		}
+	}
+}

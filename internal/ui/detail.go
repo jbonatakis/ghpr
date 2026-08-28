@@ -247,7 +247,7 @@ func (m Model) renderEventRow(e gh.Event, sel bool, refWidth, actorWidth int) st
 	} else {
 		b.WriteString(p.cell(stText, " "))
 	}
-	b.WriteString(p.cell(stFaint, e.At.Local().Format("15:04:05")))
+	b.WriteString(p.cell(stFaint, eventTime(e.At, m.now)))
 	b.WriteString(p.sep())
 	b.WriteString(p.sep())
 
