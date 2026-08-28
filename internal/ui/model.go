@@ -158,6 +158,12 @@ type Model struct {
 	// of every pull request the two modes have in common.
 	seeded bool
 
+	// backfilling is true from launch until the startup searches answer. They
+	// are far slower than a poll, and an empty feed that says "watching for
+	// changes" while they run is describing the wrong thing entirely.
+	backfilling bool
+	seedFailed  bool
+
 	// absent tracks pull requests that dropped out of the search but have not
 	// been accounted for. They stay on screen and are looked up directly, so a
 	// page-boundary artifact never shows up as "merged or closed".
@@ -235,6 +241,8 @@ func New(cfg Config) Model {
 		now:         now,
 		nextFetch:   now,
 		loading:     true,
+		// Init issues the backfill on exactly this condition.
+		backfilling: cfg.Seed > 0,
 		fetchSeq:    1,
 		width:       100,
 		height:      30,
@@ -367,7 +375,9 @@ func (m Model) Init() tea.Cmd {
 // applyBackfill files the reconstructed past, if there was any.
 func (m Model) applyBackfill(msg backfillDoneMsg) Model {
 	m.seeded = true
+	m.backfilling = false
 	if msg.err != nil {
+		m.seedFailed = true
 		// Never fatal: the dashboard's own job is unaffected by not knowing
 		// what happened before it started.
 		m.setToast("could not fill the feed in: " + gh.CleanMessage(msg.err.Error(), 90))
@@ -420,9 +430,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case spinner.TickMsg:
-		// Only animate while a poll is in flight; an idle dashboard should not
-		// repaint ten times a second for hours on end.
-		if !m.loading {
+		// Only animate while something is in flight; an idle dashboard should
+		// not repaint ten times a second for hours on end. The backfill counts:
+		// it outlasts the first poll by a long way, and a frozen spinner over a
+		// feed that is still filling in reads as a hang.
+		if !m.loading && !m.backfilling {
 			return m, nil
 		}
 		var cmd tea.Cmd

@@ -163,7 +163,13 @@ func (m Model) eventsView() string {
 	rows := m.eventRowCount()
 	events := m.feedEvents()
 	if len(events) == 0 {
-		b.WriteString(" " + stMuted.Render(m.emptyFeedText()) + "\n")
+		// The spinner is composed here rather than inside the text, so its own
+		// styling is never wrapped in another and cut short by the reset.
+		msg := stMuted.Render(m.emptyFeedText())
+		if m.backfilling {
+			msg = m.spin.View() + " " + msg
+		}
+		b.WriteString(" " + msg + "\n")
 		for i := 2; i <= rows; i++ {
 			b.WriteString("\n")
 		}
@@ -201,8 +207,19 @@ func (m Model) emptyFeedText() string {
 	if m.feedFiltered() {
 		return fmt.Sprintf("nothing in %s of activity matches this filter", plural(len(m.events), "line"))
 	}
-	if m.seeded && m.cfg.Seed > 0 {
-		return fmt.Sprintf("nothing in the last %s · watching for changes…", tidyDuration(m.cfg.Seed))
+	window := tidyDuration(m.cfg.Seed)
+	switch {
+	case m.backfilling:
+		// Still working. Saying "watching for changes" here would describe the
+		// poll while the thing the pane is actually waiting on is elsewhere.
+		return fmt.Sprintf("looking back over the last %s…", window)
+	case m.seedFailed:
+		// The toast that said so has long expired by the time anyone opens the
+		// pane, and a feed that never managed to look back must not read the
+		// same as one that looked and found nothing.
+		return fmt.Sprintf("could not look back over the last %s · watching for changes…", window)
+	case m.seeded && m.cfg.Seed > 0:
+		return fmt.Sprintf("nothing in the last %s · watching for changes…", window)
 	}
 	return "watching for changes…"
 }
@@ -220,22 +237,32 @@ func (m Model) eventsTitle() string {
 	// it says how much is below the fold — without which a full pane and a
 	// backlog of hundreds look exactly alike, and the feed appears to hold
 	// only the eight lines it happens to be showing.
-	position := ""
+	var parts []string
 	shown := len(m.feedEvents())
 	switch {
 	case m.feedFiltered() && m.eventsFocus && shown > 0:
 		// Where you are, and that where you are is inside a slice: a filtered
 		// feed must never be mistaken for the whole record.
-		position = fmt.Sprintf(" %d/%d · filtered from %d ", m.eventCursor+1, shown, len(m.events))
+		parts = append(parts, fmt.Sprintf("%d/%d · filtered from %d", m.eventCursor+1, shown, len(m.events)))
 	case m.feedFiltered():
-		position = fmt.Sprintf(" %d of %d · filtered ", shown, len(m.events))
+		parts = append(parts, fmt.Sprintf("%d of %d · filtered", shown, len(m.events)))
 	case m.eventsFocus && shown > 0:
-		position = fmt.Sprintf(" %d/%d ", m.eventCursor+1, shown)
+		parts = append(parts, fmt.Sprintf("%d/%d", m.eventCursor+1, shown))
 	case shown > m.eventRowCount():
 		// Both halves matter: that there is more, and that reaching it takes
 		// a keypress. Without the second, arrow keys move the list instead
 		// and the feed looks stuck.
-		position = fmt.Sprintf(" +%d more · e to scroll ", shown-m.eventRowCount())
+		parts = append(parts, fmt.Sprintf("+%d more · e to scroll", shown-m.eventRowCount()))
+	}
+	// Said here as well as in the empty state, because a poll can put events in
+	// the feed before the backfill answers — and then the empty state, which is
+	// where the waiting is otherwise announced, never gets drawn at all.
+	if m.backfilling {
+		parts = append(parts, "filling in…")
+	}
+	position := ""
+	if len(parts) > 0 {
+		position = " " + strings.Join(parts, " · ") + " "
 	}
 
 	lead := max(0, min(m.width, 10))

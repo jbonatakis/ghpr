@@ -268,6 +268,20 @@ key in the config file if you would rather not type it every time:
  10:03:00  design-docs#9                                   + opened               sam-okafor
 ```
 
+The two searches take a while — far longer than a poll — so the feed says what
+it is doing rather than sitting on the idle message:
+
+```
+────────── activity  filling in… ─────────────────────────────────────────────
+ ⠋ looking back over the last 720h…
+```
+
+The spinner keeps turning until they answer, which is well after the first poll
+has landed. When they do, an empty feed distinguishes the three outcomes that
+otherwise look identical: `nothing in the last 720h` for a genuinely quiet
+window, `could not look back over the last 720h` when the searches failed, and
+the plain `watching for changes…` when no backfill was asked for at all.
+
 If the backfill finds anything, the pane opens itself — a feed filled in behind
 a closed pane answers a question you cannot see it answering. It opens on the
 first stop, not the second, so the arrow keys still move the list; press `e` to
