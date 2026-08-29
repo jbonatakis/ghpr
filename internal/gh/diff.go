@@ -77,6 +77,15 @@ type Event struct {
 	// URL is the pull request this concerns, so the feed can make the
 	// reference clickable.
 	URL string
+
+	// Observed marks an event noticed by polling rather than reconstructed
+	// from GitHub's own timestamps. The difference is the date: a poll knows
+	// only that something changed between two of its own visits, so At is when
+	// it looked, up to an interval later than when it happened. A backfill over
+	// the same stretch reports the real moment — which makes the two versions
+	// of one comment look like two comments, and is why the saved record drops
+	// the observed one once the backfill has covered its ground.
+	Observed bool
 }
 
 // NewlyOpenedWithin bounds how recently a pull request must have been created
@@ -153,14 +162,15 @@ func Diff(prev, next []PR, opts DiffOpts) []Event {
 	var events []Event
 	add := func(p PR, kind EventKind, actor, format string, args ...any) {
 		events = append(events, Event{
-			At:     now,
-			Kind:   kind,
-			Key:    p.Key(),
-			Repo:   p.Repo,
-			Number: p.Number,
-			Text:   fmt.Sprintf(format, args...),
-			Actor:  actor,
-			URL:    p.URL,
+			At:       now,
+			Kind:     kind,
+			Key:      p.Key(),
+			Repo:     p.Repo,
+			Number:   p.Number,
+			Text:     fmt.Sprintf(format, args...),
+			Actor:    actor,
+			URL:      p.URL,
+			Observed: true, // dated by this poll, not by GitHub
 		})
 	}
 
@@ -246,6 +256,7 @@ func ClosureEvent(p PR, o Outcome, now time.Time) Event {
 	return Event{
 		At: now, Kind: kind, Key: p.Key(), Repo: p.Repo,
 		Number: p.Number, Text: text, Actor: o.By, URL: p.URL,
+		Observed: true, // dated by when it was noticed missing
 	}
 }
 

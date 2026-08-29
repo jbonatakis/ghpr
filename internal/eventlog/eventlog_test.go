@@ -171,7 +171,7 @@ func TestTheWatermarkIsNotTheNewestEvent(t *testing.T) {
 	}
 }
 
-func TestTrimDropsWhatHasAgedOut(t *testing.T) {
+func TestPrepareDropsWhatHasAgedOut(t *testing.T) {
 	l := scratch(t)
 	now := time.Now().UTC().Truncate(time.Second)
 	if err := l.Append([]gh.Event{
@@ -181,27 +181,30 @@ func TestTrimDropsWhatHasAgedOut(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dropped, err := l.Trim(now)
+	kept, dropped, err := l.Prepare(now, now)
 	if err != nil {
-		t.Fatalf("trim: %v", err)
+		t.Fatalf("prepare: %v", err)
 	}
 	if dropped != 1 {
 		t.Errorf("dropped %d, want the one that aged out", dropped)
 	}
+	if len(kept) != 1 || kept[0].Text != "recent" {
+		t.Errorf("kept %+v", kept)
+	}
 	got, _ := l.Load()
 	if len(got) != 1 || got[0].Text != "recent" {
-		t.Errorf("kept %+v", got)
+		t.Errorf("the file still holds %+v", got)
 	}
 }
 
-func TestTrimIsANoOpWhenNothingHasAgedOut(t *testing.T) {
+func TestPrepareRewritesNothingWhenNothingHasAgedOut(t *testing.T) {
 	l := scratch(t)
 	now := time.Now().UTC().Truncate(time.Second)
 	if err := l.Append([]gh.Event{ev("recent", now.Add(-time.Hour))}); err != nil {
 		t.Fatal(err)
 	}
-	if dropped, err := l.Trim(now); err != nil || dropped != 0 {
-		t.Errorf("trim dropped %d (%v), want nothing", dropped, err)
+	if _, dropped, err := l.Prepare(now, now); err != nil || dropped != 0 {
+		t.Errorf("prepare dropped %d (%v), want nothing", dropped, err)
 	}
 }
 
@@ -250,5 +253,98 @@ func TestLoadReturnsOldestFirst(t *testing.T) {
 		if got[i].At.Before(got[i-1].At) {
 			t.Fatalf("out of order at %d: %q then %q", i, got[i-1].Text, got[i].Text)
 		}
+	}
+}
+
+// One comment can reach the log twice: once dated by the poll that noticed it,
+// once dated truly by a later backfill over the same stretch. Left alone they
+// read as two comments seconds apart, and the file fills with the pairs.
+func TestPrepareDropsPollDatedLinesTheBackfillWillRedo(t *testing.T) {
+	l := scratch(t)
+	now := time.Now().UTC().Truncate(time.Second)
+	since := now.Add(-time.Hour)
+
+	observed := func(text string, at time.Time) gh.Event {
+		e := ev(text, at)
+		e.Observed = true
+		return e
+	}
+
+	if err := l.Append([]gh.Event{
+		observed("polled, inside the gap", now.Add(-30*time.Minute)),
+		observed("polled, before the gap", now.Add(-3*time.Hour)),
+		ev("reconstructed, inside the gap", now.Add(-20*time.Minute)),
+		ev("reconstructed, before the gap", now.Add(-4*time.Hour)),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	kept, dropped, err := l.Prepare(now, since)
+	if err != nil {
+		t.Fatalf("prepare: %v", err)
+	}
+	if dropped != 1 {
+		t.Errorf("dropped %d lines, want the one poll-dated line inside the gap", dropped)
+	}
+
+	var texts []string
+	for _, e := range kept {
+		texts = append(texts, e.Text)
+	}
+	has := func(want string) bool {
+		for _, got := range texts {
+			if got == want {
+				return true
+			}
+		}
+		return false
+	}
+	for _, want := range []string{
+		"polled, before the gap",        // outside the gap: nothing will redo it
+		"reconstructed, inside the gap", // already carries GitHub's own timestamp
+		"reconstructed, before the gap",
+	} {
+		if !has(want) {
+			t.Errorf("prepare dropped %q, which nothing is going to replace", want)
+		}
+	}
+	if has("polled, inside the gap") {
+		t.Error("a poll-dated line the backfill is about to redo was kept")
+	}
+}
+
+// Three runs over one comment, which is how the duplicate actually arises.
+func TestOneCommentEndsUpOnFileOnce(t *testing.T) {
+	l := scratch(t)
+	now := time.Now().UTC().Truncate(time.Second)
+	trueTime := now.Add(-3 * time.Hour)
+
+	comment := func(at time.Time, observed bool) gh.Event {
+		e := ev("1 new comment", at)
+		e.Observed = observed
+		return e
+	}
+
+	// Run 1 notices it by polling, twenty seconds late.
+	l.Append([]gh.Event{comment(trueTime.Add(20*time.Second), true)})
+
+	// Run 2 starts, and its backfill will cover everything since run 1 began.
+	kept, _, err := l.Prepare(now.Add(-2*time.Hour), trueTime.Add(-time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(kept) != 0 {
+		t.Fatalf("the poll-dated line survived into a run that will redo it: %+v", kept)
+	}
+	// ...and reports it at the moment it actually happened.
+	l.Append([]gh.Event{comment(trueTime, false)})
+
+	// Run 3 loads the log.
+	got, _ := l.Load()
+	if len(got) != 1 {
+		t.Fatalf("one comment is on file %d times: %+v", len(got), got)
+	}
+	if !got[0].At.Equal(trueTime) {
+		t.Errorf("the surviving line is dated %s, want the real moment %s", got[0].At, trueTime)
 	}
 }

@@ -82,12 +82,17 @@ type stored struct {
 	Text   string       `json:"text"`
 	Actor  string       `json:"actor,omitempty"`
 	URL    string       `json:"url,omitempty"`
+
+	// Observed marks a line dated by the poll that noticed it rather than by
+	// GitHub. Prepare drops these once a backfill has covered their ground.
+	Observed bool `json:"observed,omitempty"`
 }
 
 func toStored(e gh.Event) stored {
 	return stored{
 		At: e.At, Kind: e.Kind, Key: e.Key, Repo: e.Repo,
 		Number: e.Number, Text: e.Text, Actor: e.Actor, URL: e.URL,
+		Observed: e.Observed,
 	}
 }
 
@@ -95,6 +100,7 @@ func (s stored) event() gh.Event {
 	return gh.Event{
 		At: s.At, Kind: s.Kind, Key: s.Key, Repo: s.Repo,
 		Number: s.Number, Text: s.Text, Actor: s.Actor, URL: s.URL,
+		Observed: s.Observed,
 	}
 }
 
@@ -223,19 +229,29 @@ func (l *Log) SetWatermark(at time.Time) error {
 	return os.Rename(tmp.Name(), path)
 }
 
-// Trim rewrites the log without what has aged out of it, and reports how many
-// lines were dropped. Called once at startup, where a rewrite costs nothing
-// anyone is waiting on.
-func (l *Log) Trim(now time.Time) (int, error) {
+// Prepare reads the log, tidies it, and returns what is worth keeping.
+//
+// Two things go. What has aged out, which is what stops the file growing
+// without end. And anything dated by a poll that falls on or after since,
+// because the backfill about to run covers that stretch and will report the
+// same activity with GitHub's own timestamps — leaving both would put one
+// comment on file twice, a second apart, and a run after that would show it
+// twice. This is why events remember how they were learned.
+//
+// Called once at startup, where a rewrite costs nothing anyone is waiting on.
+func (l *Log) Prepare(now, since time.Time) ([]gh.Event, int, error) {
 	events, err := l.Load()
 	if err != nil && len(events) == 0 {
-		return 0, err
+		return nil, 0, err
 	}
 	cutoff := now.Add(-maxAge)
 	kept := make([]gh.Event, 0, len(events))
 	for _, e := range events {
 		if e.At.Before(cutoff) {
 			continue
+		}
+		if e.Observed && !e.At.Before(since) {
+			continue // about to be re-reported, better dated
 		}
 		kept = append(kept, e)
 	}
@@ -244,15 +260,15 @@ func (l *Log) Trim(now time.Time) (int, error) {
 	}
 	dropped := len(events) - len(kept)
 	if dropped <= 0 {
-		return 0, nil
+		return kept, 0, nil
 	}
 
 	if err := os.MkdirAll(l.dir, 0o700); err != nil {
-		return 0, err
+		return kept, 0, err
 	}
 	tmp, err := os.CreateTemp(l.dir, ".events-*.jsonl")
 	if err != nil {
-		return 0, err
+		return kept, 0, err
 	}
 	defer os.Remove(tmp.Name())
 
@@ -267,13 +283,13 @@ func (l *Log) Trim(now time.Time) (int, error) {
 	}
 	if err := w.Flush(); err != nil {
 		tmp.Close()
-		return 0, err
+		return kept, 0, err
 	}
 	if err := tmp.Close(); err != nil {
-		return 0, err
+		return kept, 0, err
 	}
 	if err := os.Chmod(tmp.Name(), 0o600); err != nil {
-		return 0, err
+		return kept, 0, err
 	}
-	return dropped, os.Rename(tmp.Name(), l.Path())
+	return kept, dropped, os.Rename(tmp.Name(), l.Path())
 }

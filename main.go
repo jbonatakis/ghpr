@@ -110,16 +110,22 @@ func main() {
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "ghpr: not keeping activity between runs:", err)
 		} else {
-			if dropped, err := log.Trim(time.Now()); err != nil {
+			now := time.Now()
+			watermark := log.Watermark()
+			// The same clamp the backfill will apply, because what it is about
+			// to re-cover is exactly what the log should stop holding an
+			// approximate copy of.
+			since := now.Add(-*seed)
+			if watermark.After(since) {
+				since = watermark
+			}
+			cached, dropped, err := log.Prepare(now, since)
+			if err != nil {
 				fmt.Fprintln(os.Stderr, "ghpr: could not tidy the activity log:", err)
 			} else if dropped > 0 && *once {
-				fmt.Fprintf(os.Stderr, "ghpr: dropped %d aged-out activity lines\n", dropped)
+				fmt.Fprintf(os.Stderr, "ghpr: tidied %d activity lines\n", dropped)
 			}
-			cached, err := log.Load()
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "ghpr: could not read saved activity:", err)
-			}
-			cfg.Log, cfg.Cached, cfg.Watermark = log, cached, log.Watermark()
+			cfg.Log, cfg.Cached, cfg.Watermark = log, cached, watermark
 		}
 	}
 

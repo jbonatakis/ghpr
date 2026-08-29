@@ -287,7 +287,17 @@ search is a single half-hour window, and stable beats sudden.
 newest twenty comments on a pull request and nothing older, and cannot see quiet
 pull requests at all. A log that accumulates while ghpr runs has neither limit,
 so a week of use is a denser week than a week-long `-seed` could ever produce.
-It keeps 90 days or 20,000 lines, whichever comes first, tidied at startup.
+
+**It is bounded, and it does not accumulate duplicates.** At startup the log is
+rewritten keeping 90 days or 20,000 lines, whichever comes first — a few
+megabytes at the very outside. The same pass drops something subtler: an event
+noticed by *polling* is dated by the poll that saw it, up to one interval later
+than it happened, while a backfill over the same stretch reports the real
+moment. Both on file would be one comment appearing twice, seconds apart, and
+the pairs would pile up run after run. So every line records how it was learned,
+and the poll-dated copy is dropped exactly when the backfill is about to
+re-report that stretch properly. Nothing is lost: poll-dated lines outside the
+gap are kept, because nothing is going to replace them.
 
 Only the feed is kept. The pull request list is live state, and a dashboard
 showing yesterday's statuses would be worse than one that takes a moment.
