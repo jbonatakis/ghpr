@@ -57,6 +57,7 @@ ghpr -once                            # plain-text snapshot, no TUI
 | `-links` | `true` | clickable pull request references (`-links=false` to disable) |
 | `-once` | – | print a snapshot and exit — good for scripts and cron |
 | `-why-seed` | – | account for the startup backfill pull request by pull request, and exit |
+| `-remember` | `true` | keep the activity feed between runs (`-remember=false` for memory only) |
 
 ## Keys
 
@@ -252,6 +253,44 @@ inside a *review* keeps the verdict, though — `★ changes requested` and
 A description that names you is dated by when the pull request was opened, not
 by when it was last touched. Dating it by the update time would re-announce the
 same standing mention on every push and every comment for the life of the branch.
+
+### What it remembers between runs
+
+Things that happened do not stop being true when the dashboard exits, so the
+feed is kept. It lives in `$XDG_STATE_HOME/ghpr/` (or `~/.local/state/ghpr/`)
+as a JSON Lines append log at mode 0600 — a record of which pull requests you
+watch is nobody else's business. `-remember=false` keeps it in memory only.
+
+Three things follow from it:
+
+**The backfill only covers the gap.** Alongside the events is a watermark: the
+point up to which the feed is known to be complete. Reopen twenty minutes after
+closing and the searches cover twenty minutes, not the whole seed window — two
+searches instead of ten. Away longer than the window and it clamps to the
+window, so a fortnight away does not turn launch into a fortnight of searching.
+
+The watermark is recorded separately rather than read off the newest event,
+because those are different claims. A quiet hour before you quit leaves the
+newest event an hour old, and resuming from *it* would silently skip an hour
+nobody had looked at. Only a backfill that finished may move it, and only up to
+when that run started — a poll sees one search's worth of pull requests, which
+is narrower than the feed's scope.
+
+**The saved feed lands underneath, never on top.** It is older than the gap
+being filled, so it is treated as the oldest window of all and released after
+every search. Painting it at startup instead would put newer activity on top of
+it moments later, which is the one thing the feed must not do. The cost is that
+the feed waits on the first search rather than appearing instantly — but that
+search is a single half-hour window, and stable beats sudden.
+
+**The record outgrows what any backfill can reconstruct.** One search sees the
+newest twenty comments on a pull request and nothing older, and cannot see quiet
+pull requests at all. A log that accumulates while ghpr runs has neither limit,
+so a week of use is a denser week than a week-long `-seed` could ever produce.
+It keeps 90 days or 20,000 lines, whichever comes first, tidied at startup.
+
+Only the feed is kept. The pull request list is live state, and a dashboard
+showing yesterday's statuses would be worse than one that takes a moment.
 
 ### Opening onto the last hour
 

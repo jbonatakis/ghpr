@@ -21,7 +21,8 @@ func windowPR(n int, at time.Time) gh.PR {
 // deliver hands the model one search's answer for a window.
 func deliver(m Model, window int, since time.Time, prs ...gh.PR) Model {
 	return m.applyBackfillChunk(backfillChunkMsg{
-		prs: prs, viewer: "jbonatakis", since: since, window: window,
+		prs: prs, viewer: "jbonatakis", since: since,
+		window: window, needs: gh.BackfillShapes,
 	})
 }
 
@@ -114,7 +115,10 @@ func TestAFailedWindowDoesNotStrandTheOnesBehindIt(t *testing.T) {
 	m := newSeeding(t, 24*time.Hour)
 
 	// Window 0 fails outright.
-	fail := backfillChunkMsg{since: since, window: 0, err: &gh.TransientError{Detail: "502"}}
+	fail := backfillChunkMsg{
+		since: since, window: 0, needs: gh.BackfillShapes,
+		err: &gh.TransientError{Detail: "502"},
+	}
 	m = m.applyBackfillChunk(fail)
 	m = m.applyBackfillChunk(fail)
 

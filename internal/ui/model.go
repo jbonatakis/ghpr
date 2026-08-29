@@ -14,6 +14,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/jbonatakis/ghpr/internal/config"
+	"github.com/jbonatakis/ghpr/internal/eventlog"
 	"github.com/jbonatakis/ghpr/internal/gh"
 )
 
@@ -101,6 +102,14 @@ type Config struct {
 	// leaves it empty until something actually changes.
 	Seed time.Duration
 
+	// Log persists the feed between runs; nil keeps it in memory only. Cached
+	// is what it held at startup and Watermark how far that record is known to
+	// be complete, both read before the dashboard starts so the backfill knows
+	// how small a gap it actually has to cover.
+	Log       *eventlog.Log
+	Cached    []gh.Event
+	Watermark time.Time
+
 	// Links turns pull request references into clickable terminal hyperlinks.
 	Links bool
 }
@@ -182,11 +191,15 @@ type Model struct {
 	// window ahead of them has been filed. Without that the feed jumps: a slow
 	// first window drops newer activity in above whatever is already on screen,
 	// instead of the older activity arriving underneath it.
-	backfillHeld    map[int][]gh.PR
-	backfillAnswers map[int]int
-	backfillNext    int
-	backfillViewer  string
-	backfillSince   time.Time
+	backfillHeld       map[int][]gh.PR
+	backfillCachedHeld map[int][]gh.Event
+	backfillAnswers    map[int]int
+	backfillNeeds      map[int]int
+	backfillNext       int
+	backfillViewer     string
+
+	// unsaved is what has been recorded but not yet written to disk.
+	unsaved []gh.Event
 
 	// absent tracks pull requests that dropped out of the search but have not
 	// been accounted for. They stay on screen and are looked up directly, so a
@@ -266,16 +279,33 @@ func New(cfg Config) Model {
 		nextFetch:   now,
 		loading:     true,
 		// Init issues the backfill on exactly this condition.
-		backfilling:     cfg.Seed > 0,
-		backfillCh:      backfillChannel(cfg.Seed),
-		backfillStop:    make(chan struct{}),
-		backfillSeen:    map[string]bool{},
-		backfillHeld:    map[int][]gh.PR{},
-		backfillAnswers: map[int]int{},
-		fetchSeq:        1,
-		width:           100,
-		height:          30,
+		backfilling:        cfg.Seed > 0,
+		backfillCh:         backfillChannel(cfg.Seed),
+		backfillStop:       make(chan struct{}),
+		backfillSeen:       map[string]bool{},
+		backfillHeld:       map[int][]gh.PR{},
+		backfillCachedHeld: map[int][]gh.Event{},
+		backfillAnswers:    map[int]int{},
+		backfillNeeds:      map[int]int{},
+		fetchSeq:           1,
+		width:              100,
+		height:             30,
 	}
+}
+
+// backfillSince is where the reconstruction starts.
+//
+// Normally the seed window, but no further back than the saved record already
+// reaches: a dashboard reopened twenty minutes after it closed has twenty
+// minutes to catch up on, not an hour, and the difference is a single search
+// against half a dozen. Clamped to the seed window in the other direction, so a
+// fortnight away does not turn launch into a fortnight of searching.
+func (m *Model) backfillSince() time.Time {
+	floor := m.startedAt.Add(-m.cfg.Seed)
+	if m.cfg.Watermark.After(floor) {
+		return m.cfg.Watermark
+	}
+	return floor
 }
 
 // backfillChannel carries the searches' answers, buffered enough that a worker
@@ -368,7 +398,14 @@ type backfillChunkMsg struct {
 	viewer string
 	since  time.Time
 	window int
+	needs  int // answers before this window is complete
 	err    error
+
+	// cached is the saved record, delivered as the oldest window of all so it
+	// lands underneath everything the searches find. Every event in it predates
+	// the gap being filled, so it can never push newer activity down the screen
+	// — which is the whole reason it is not simply painted at startup.
+	cached []gh.Event
 }
 
 // backfillDoneMsg says every search has answered.
@@ -403,6 +440,15 @@ const backfillWorkers = 4
 // reader wants first and what the top of the feed is.
 func (m Model) runBackfill() tea.Cmd {
 	cfg, started, out, stop := m.cfg, m.startedAt, m.backfillCh, m.backfillStop
+	since := m.backfillSince()
+	// Only what predates the gap: anything newer is about to be found again,
+	// with the true timestamps a poll could only approximate.
+	cached := make([]gh.Event, 0, len(cfg.Cached))
+	for _, e := range cfg.Cached {
+		if e.At.Before(since) {
+			cached = append(cached, e)
+		}
+	}
 	if out == nil {
 		return nil
 	}
@@ -411,7 +457,6 @@ func (m Model) runBackfill() tea.Cmd {
 		// than a poll does.
 		ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 		defer cancel()
-		since := started.Add(-cfg.Seed)
 
 		plans := make(chan gh.BackfillPlan)
 		var wg sync.WaitGroup
@@ -430,7 +475,7 @@ func (m Model) runBackfill() tea.Cmd {
 					res, err := cfg.Client.Backfill(ctx, plan.Query, cfg.Max)
 					out <- backfillChunkMsg{
 						prs: res.PRs, viewer: res.Viewer, since: since,
-						window: plan.Window, err: err,
+						window: plan.Window, needs: gh.BackfillShapes, err: err,
 					}
 				}
 			}()
@@ -439,8 +484,9 @@ func (m Model) runBackfill() tea.Cmd {
 		// Handed out newest window first, so what lands first is what happened
 		// most recently — which is what the reader wants and what the top of
 		// the feed is. Stops feeding the moment the backlog is full.
+		planned := gh.BackfillSearches(cfg.Extra, since, started)
 	feed:
-		for _, plan := range gh.BackfillSearches(cfg.Extra, since, started) {
+		for _, plan := range planned {
 			select {
 			case <-stop:
 				break feed
@@ -448,6 +494,18 @@ func (m Model) runBackfill() tea.Cmd {
 			}
 		}
 		close(plans)
+
+		// The saved record is the window behind them all. Sent straight away
+		// rather than waited for: it is already in hand, and the queue holds it
+		// until its turn regardless.
+		if len(cached) > 0 {
+			out <- backfillChunkMsg{
+				window: len(planned) / gh.BackfillShapes,
+				needs:  1,
+				cached: cached,
+				since:  since,
+			}
+		}
 
 		wg.Wait()
 		close(out)
@@ -496,16 +554,23 @@ func (m Model) applyBackfillChunk(msg backfillChunkMsg) Model {
 		m.seedFailed = true
 	} else {
 		m.backfillHeld[msg.window] = append(m.backfillHeld[msg.window], msg.prs...)
+		m.backfillCachedHeld[msg.window] = append(m.backfillCachedHeld[msg.window], msg.cached...)
 		if m.backfillViewer == "" {
 			m.backfillViewer = msg.viewer
 		}
-		m.backfillSince = msg.since
 	}
 	m.backfillAnswers[msg.window]++
+	if msg.needs > 0 {
+		m.backfillNeeds[msg.window] = msg.needs
+	}
 
 	// Release every window that is now complete and has nothing older ahead
 	// of it still outstanding.
-	for m.backfillAnswers[m.backfillNext] >= gh.BackfillShapes {
+	for {
+		need, known := m.backfillNeeds[m.backfillNext]
+		if !known || m.backfillAnswers[m.backfillNext] < need {
+			break
+		}
 		m = m.releaseBackfillWindow(m.backfillNext)
 		m.backfillNext++
 	}
@@ -515,8 +580,10 @@ func (m Model) applyBackfillChunk(msg backfillChunkMsg) Model {
 // releaseBackfillWindow files one window's findings into the feed.
 func (m Model) releaseBackfillWindow(window int) Model {
 	prs := m.backfillHeld[window]
+	saved := m.backfillCachedHeld[window]
 	delete(m.backfillHeld, window)
-	if len(prs) == 0 {
+	delete(m.backfillCachedHeld, window)
+	if len(prs) == 0 && len(saved) == 0 {
 		return m
 	}
 
@@ -528,13 +595,14 @@ func (m Model) releaseBackfillWindow(window int) Model {
 		m.backfillSeen[p.Key()] = true
 		fresh = append(fresh, p)
 	}
-	events := gh.Seed(fresh, m.backfillSince, m.backfillViewer)
-	if len(events) == 0 {
+	// The saved record needs no reconstructing; it is already events.
+	events := gh.Seed(fresh, m.backfillSince(), m.backfillViewer)
+	if len(events)+len(saved) == 0 {
 		return m
 	}
 
 	first := m.backfillFound == 0
-	m.backfillFound += len(events)
+	m.backfillFound += len(events) + len(saved)
 	if m.backfillFound >= maxEvents && !m.backfillStopped {
 		// The backlog is full. Windows come newest first, so anything still
 		// queued is older than what has already been filed and would be
@@ -550,6 +618,7 @@ func (m Model) releaseBackfillWindow(window int) Model {
 		m.showEvents = true
 	}
 	m.record(events)
+	m.replay(saved)
 	m.clampScroll()
 	return m
 }
@@ -558,9 +627,15 @@ func (m Model) releaseBackfillWindow(window int) Model {
 // A window whose searches failed never completes, so without this everything
 // behind it would be gathered and then silently dropped.
 func (m Model) flushBackfill() Model {
-	windows := make([]int, 0, len(m.backfillHeld))
+	seen := map[int]bool{}
+	windows := make([]int, 0, len(m.backfillHeld)+len(m.backfillCachedHeld))
 	for w := range m.backfillHeld {
-		windows = append(windows, w)
+		windows, seen[w] = append(windows, w), true
+	}
+	for w := range m.backfillCachedHeld {
+		if !seen[w] {
+			windows = append(windows, w)
+		}
 	}
 	sort.Ints(windows)
 	for _, w := range windows {
@@ -661,14 +736,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.applyFetch(msg)
 
 	case verifyDoneMsg:
-		return m.applyVerify(msg), nil
+		next := m.applyVerify(msg)
+		return next, next.takeSaved()
 
 	case backfillChunkMsg:
 		// Re-arm: there will be another until the channel closes.
-		return m.applyBackfillChunk(msg), m.awaitBackfill()
+		next := m.applyBackfillChunk(msg)
+		return next, tea.Batch(next.awaitBackfill(), next.takeSaved())
 
 	case backfillDoneMsg:
-		return m.applyBackfill(msg), nil
+		next := m.applyBackfill(msg)
+		return next, tea.Batch(next.takeSaved(), next.saveWatermark())
 
 	case tea.KeyMsg:
 		return m.handleKey(msg)
@@ -768,9 +846,9 @@ func (m Model) applyFetch(msg fetchDoneMsg) (tea.Model, tea.Cmd) {
 	m.restoreCursor(selected)
 
 	if len(verify) > 0 {
-		return m, m.verifyCmd(verify, m.fetchSeq)
+		return m, tea.Batch(m.verifyCmd(verify, m.fetchSeq), m.takeSaved())
 	}
-	return m, nil
+	return m, m.takeSaved()
 }
 
 // holdVanished keeps pull requests that dropped out of the search visible and
@@ -884,13 +962,67 @@ func (m Model) applyVerify(msg verifyDoneMsg) Model {
 	return m
 }
 
+// takeSaved hands whatever is waiting over to the writer.
+func (m *Model) takeSaved() tea.Cmd {
+	if len(m.unsaved) == 0 {
+		return nil
+	}
+	cmd := m.saveEvents(m.unsaved)
+	m.unsaved = nil
+	return cmd
+}
+
+// saveEvents writes new activity to the record on disk, off the UI goroutine.
+// Failing to write is not worth interrupting anyone over: the feed on screen is
+// unaffected, and the next run simply reconstructs a little more.
+func (m Model) saveEvents(events []gh.Event) tea.Cmd {
+	log := m.cfg.Log
+	if log == nil || len(events) == 0 {
+		return nil
+	}
+	// Copied, because the model's own slice is re-sorted and trimmed under it.
+	batch := append([]gh.Event(nil), events...)
+	return func() tea.Msg {
+		log.Append(batch)
+		return nil
+	}
+}
+
+// saveWatermark records how far the feed is now known to be complete.
+//
+// Only ever the moment this run started, and only once the backfill has
+// finished covering up to it. Polling cannot move it: a poll sees one search's
+// worth of pull requests, which is narrower than the feed's scope, so treating
+// its coverage as the feed's would leave holes the next run never fills.
+func (m Model) saveWatermark() tea.Cmd {
+	log := m.cfg.Log
+	if log == nil || m.seedFailed {
+		// A run that could not gather the window has covered nothing, and
+		// saying otherwise would tell the next run to skip a gap nobody
+		// ever looked at.
+		return nil
+	}
+	at := m.startedAt
+	return func() tea.Msg {
+		log.SetWatermark(at)
+		return nil
+	}
+}
+
 // record files activity events and marks the pull requests they touch.
 //
 // Each event is marked at its own timestamp rather than at the moment it was
 // filed. For a poll the two are the same, but a seeded event carries a time
 // from before the dashboard opened, and the gutter dot means "changed in the
 // last minute" — so only the seeded lines recent enough to deserve one get it.
-func (m *Model) record(events []gh.Event) {
+func (m *Model) record(events []gh.Event) { m.file(events, true) }
+
+// replay files events that came from the saved record. Identical to record in
+// every way but one: writing them back would append what is already there, a
+// duplicate every launch until the file was all one afternoon.
+func (m *Model) replay(events []gh.Event) { m.file(events, false) }
+
+func (m *Model) file(events []gh.Event, save bool) {
 	if len(events) == 0 {
 		return
 	}
@@ -910,6 +1042,14 @@ func (m *Model) record(events []gh.Event) {
 	if m.eventsFocus && m.eventCursor > 0 {
 		if e := m.selectedEvent(); e != nil {
 			held, anchored = *e, true
+		}
+	}
+
+	if save {
+		for _, e := range events {
+			if e.Kind != gh.EventSessionStart {
+				m.unsaved = append(m.unsaved, e)
+			}
 		}
 	}
 

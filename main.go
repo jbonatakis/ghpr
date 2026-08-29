@@ -15,6 +15,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/jbonatakis/ghpr/internal/config"
+	"github.com/jbonatakis/ghpr/internal/eventlog"
 	"github.com/jbonatakis/ghpr/internal/gh"
 	"github.com/jbonatakis/ghpr/internal/ui"
 )
@@ -33,6 +34,7 @@ func main() {
 		why      = flag.Bool("why-seed", false, "explain what the startup backfill can and cannot see, and exit")
 		showCfg  = flag.Bool("config", false, "print the config file path and exit")
 		links    = flag.Bool("links", true, "make pull request references clickable (-links=false to disable)")
+		remember = flag.Bool("remember", true, "keep the activity feed between runs (-remember=false to keep it in memory only)")
 		showVer  = flag.Bool("version", false, "print version and exit")
 	)
 	flag.Usage = usage
@@ -100,6 +102,27 @@ func main() {
 		Seed:     *seed,
 	}
 
+	// Read before the dashboard starts. It is one small file, and the backfill
+	// cannot work out how small a gap it has to cover until it knows how far
+	// the saved record already reaches.
+	if *remember {
+		log, err := eventlog.Open()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "ghpr: not keeping activity between runs:", err)
+		} else {
+			if dropped, err := log.Trim(time.Now()); err != nil {
+				fmt.Fprintln(os.Stderr, "ghpr: could not tidy the activity log:", err)
+			} else if dropped > 0 && *once {
+				fmt.Fprintf(os.Stderr, "ghpr: dropped %d aged-out activity lines\n", dropped)
+			}
+			cached, err := log.Load()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "ghpr: could not read saved activity:", err)
+			}
+			cfg.Log, cfg.Cached, cfg.Watermark = log, cached, log.Watermark()
+		}
+	}
+
 	if *why {
 		if err := explainSeed(cfg); err != nil {
 			fail(err)
@@ -137,6 +160,9 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "\nauth:   uses $GITHUB_TOKEN, $GH_TOKEN, or `gh auth token`.\n")
 	if path, err := config.Path(); err == nil {
 		fmt.Fprintf(os.Stderr, "config: %s (edit organizations in-app with O)\n", path)
+	}
+	if dir, err := eventlog.Dir(); err == nil {
+		fmt.Fprintf(os.Stderr, "feed:   %s (activity kept between runs)\n", dir)
 	}
 }
 
