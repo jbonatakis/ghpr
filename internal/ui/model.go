@@ -21,10 +21,17 @@ import (
 // freshFor is how long a PR stays highlighted after we notice it changed.
 const freshFor = 60 * time.Second
 
-// maxEvents caps the activity feed's backlog. It is generous because the feed
-// can be scrolled: the cap is there to bound memory over a dashboard left open
-// for days, not to decide how far back the user is allowed to look.
-const maxEvents = 500
+// maxEvents caps the feed in memory. Generous, because the record on disk holds
+// far more than a session ever generates and there is no reason to throw most of
+// it away on the way in: the cap is here to bound a dashboard left open for
+// weeks, not to decide how far back anyone may look.
+const maxEvents = 2000
+
+// backfillEnough is when the searches stop, which is a different question from
+// how much the feed holds. Filling the view is worth a handful of searches;
+// filling it four times over is not, and the rest accumulates on disk anyway as
+// the dashboard runs.
+const backfillEnough = 500
 
 type sortMode int
 
@@ -291,6 +298,29 @@ func New(cfg Config) Model {
 		width:              100,
 		height:             30,
 	}
+}
+
+// shownEvents is how many pieces of activity the feed is holding. The marker
+// for where this run began is not one of them.
+func (m *Model) shownEvents() int {
+	n := 0
+	for _, e := range m.events {
+		if e.Kind != gh.EventSessionStart {
+			n++
+		}
+	}
+	return n
+}
+
+// oldestEvent is how far back the feed actually reaches, which is a different
+// question from how far the searches were told to look.
+func (m *Model) oldestEvent() time.Time {
+	for _, e := range m.events {
+		if e.Kind != gh.EventSessionStart {
+			return e.At
+		}
+	}
+	return m.startedAt
 }
 
 // backfillSince is where the reconstruction starts.
@@ -603,7 +633,7 @@ func (m Model) releaseBackfillWindow(window int) Model {
 
 	first := m.backfillFound == 0
 	m.backfillFound += len(events) + len(saved)
-	if m.backfillFound >= maxEvents && !m.backfillStopped {
+	if m.backfillFound >= backfillEnough && !m.backfillStopped {
 		// The backlog is full. Windows come newest first, so anything still
 		// queued is older than what has already been filed and would be
 		// trimmed away the moment it arrived — asking GitHub for it is work
@@ -665,11 +695,16 @@ func (m Model) applyBackfill(msg backfillDoneMsg) Model {
 
 	switch {
 	case m.backfillFound > 0:
+		// Described by what is actually on screen, not by the seed window.
+		// Most of the feed can come off the saved record and reach back weeks
+		// past that window, and counting what was filed rather than what was
+		// kept claimed more than the backlog had room for.
+		//
 		// It opens unfocused, so the arrow keys still belong to the list —
 		// worth saying out loud, because a pane that appeared unbidden gives
 		// no hint that getting into it takes a keypress.
-		m.setToast(fmt.Sprintf("%s from the last %s — e to scroll the feed",
-			plural(m.backfillFound, "event"), tidyDuration(m.cfg.Seed)))
+		m.setToast(fmt.Sprintf("%s going back %s — e to scroll the feed",
+			plural(m.shownEvents(), "event"), compactAge(m.now.Sub(m.oldestEvent()))))
 	case m.seedFailed:
 		// Never fatal: the dashboard's own job is unaffected by not knowing
 		// what happened before it started.

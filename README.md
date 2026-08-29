@@ -334,6 +334,20 @@ otherwise look identical: `nothing in the last 720h` for a genuinely quiet
 window, `could not look back over the last 720h` when the searches failed, and
 the plain `watching for changes…` when no backfill was asked for at all.
 
+`-seed` bounds the *searching*, not the feed. Whatever the saved record already
+holds is loaded whole — there is no reason to throw away history you already
+have to make it fit a window that only ever governed how much to ask GitHub
+for. So the feed usually reaches much further back than `-seed` suggests, and
+says so: `500 events going back 3d`, never "from the last 1h" over a feed that
+is three days deep.
+
+Two limits sit behind that, and they are deliberately different numbers. The
+searches stop once they have gathered 500 events, because filling the view is
+worth a handful of searches and filling it four times over is not. The feed
+itself holds 2,000, because the record on disk accumulates past what any one
+launch gathers and capping it at what a launch happens to find would throw most
+of it away.
+
 If the backfill finds anything, the pane opens itself — a feed filled in behind
 a closed pane answers a question you cannot see it answering. It opens on the
 first stop, not the second, so the arrow keys still move the list; press `e` to

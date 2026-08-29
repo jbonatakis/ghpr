@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/lipgloss"
@@ -207,19 +208,24 @@ func (m Model) emptyFeedText() string {
 	if m.feedFiltered() {
 		return fmt.Sprintf("nothing in %s of activity matches this filter", plural(len(m.events), "line"))
 	}
-	window := tidyDuration(m.cfg.Seed)
 	switch {
 	case m.backfilling:
-		// Still working. Saying "watching for changes" here would describe the
-		// poll while the thing the pane is actually waiting on is elsewhere.
-		return fmt.Sprintf("looking back over the last %s…", window)
+		// The gap actually being covered, which the saved record can make much
+		// shorter than the seed window. Still working, either way: saying
+		// "watching for changes" here would describe the poll, while the thing
+		// the pane is waiting on is elsewhere.
+		return fmt.Sprintf("looking back over the last %s…",
+			tidyDuration(m.startedAt.Sub(m.backfillSince()).Round(time.Minute)))
 	case m.seedFailed:
 		// The toast that said so has long expired by the time anyone opens the
 		// pane, and a feed that never managed to look back must not read the
 		// same as one that looked and found nothing.
-		return fmt.Sprintf("could not look back over the last %s · watching for changes…", window)
-	case m.seeded && m.cfg.Seed > 0:
-		return fmt.Sprintf("nothing in the last %s · watching for changes…", window)
+		return "could not look back · watching for changes…"
+	case m.seeded:
+		// No window quoted. What was searched and what the saved record already
+		// held are two different spans, and naming either would misdescribe the
+		// other.
+		return "no activity found · watching for changes…"
 	}
 	return "watching for changes…"
 }

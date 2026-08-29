@@ -228,14 +228,14 @@ func TestAQuietWindowDoesNotOpenThePane(t *testing.T) {
 func TestTheEmptyFeedSaysWhetherItLookedBack(t *testing.T) {
 	m := backfill(newSeeding(t, time.Hour), quiet(time.Now()), time.Hour)
 	m.showEvents = true
-	if out := feedText(m); !strings.Contains(out, "nothing in the last 1h") {
+	if out := feedText(m); !strings.Contains(out, "no activity found") {
 		t.Errorf("the empty feed does not say it looked back:\n%s", out)
 	}
 
 	plain := newLoaded(t, 140, 40)
 	plain.showEvents = true
 	out := feedText(plain)
-	if strings.Contains(out, "nothing in the last") {
+	if strings.Contains(out, "no activity found") {
 		t.Errorf("a feed that was never seeded claims it looked back:\n%s", out)
 	}
 	if !strings.Contains(out, "watching for changes") {

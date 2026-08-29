@@ -39,7 +39,7 @@ func TestTheLookingBackMessageStopsWhenTheBackfillLands(t *testing.T) {
 	if strings.Contains(out, "looking back") {
 		t.Errorf("the feed is still waiting after the backfill landed:\n%s", out)
 	}
-	if !strings.Contains(out, "nothing in the last 1h") {
+	if !strings.Contains(out, "no activity found") {
 		t.Errorf("the feed does not report what the backfill found:\n%s", out)
 	}
 }
@@ -53,8 +53,11 @@ func TestAFailedBackfillSaysSoInTheFeed(t *testing.T) {
 	m = update(m, backfillDoneMsg{err: &gh.TransientError{Detail: "upstream had a moment"}})
 
 	out := feedText(m)
-	if !strings.Contains(out, "could not look back over the last 720h") {
+	if !strings.Contains(out, "could not look back") {
 		t.Errorf("a failed backfill is indistinguishable from a quiet one:\n%s", out)
+	}
+	if strings.Contains(out, "no activity found") {
+		t.Error("a failed backfill read as one that looked and found nothing")
 	}
 	if strings.Contains(out, "looking back over") {
 		t.Error("the feed is still waiting on a backfill that already failed")
