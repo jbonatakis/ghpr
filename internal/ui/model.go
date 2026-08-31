@@ -117,6 +117,10 @@ type Config struct {
 	Cached    []gh.Event
 	Watermark time.Time
 
+	// Watch is which ways a pull request may matter to the viewer for it to
+	// reach the feed. Empty watches none, which is how -seed 0 behaves.
+	Watch []gh.Shape
+
 	// Links turns pull request references into clickable terminal hyperlinks.
 	Links bool
 }
@@ -323,6 +327,19 @@ func (m *Model) oldestEvent() time.Time {
 	return m.startedAt
 }
 
+// backfillWindowCount is how many distinct windows a plan covers, which is the
+// index the saved record is delivered under: the window behind them all.
+func backfillWindowCount(plans []gh.BackfillPlan) []int {
+	seen := map[int]bool{}
+	var out []int
+	for _, p := range plans {
+		if !seen[p.Window] {
+			seen[p.Window], out = true, append(out, p.Window)
+		}
+	}
+	return out
+}
+
 // backfillSince is where the reconstruction starts.
 //
 // Normally the seed window, but no further back than the saved record already
@@ -505,7 +522,7 @@ func (m Model) runBackfill() tea.Cmd {
 					res, err := cfg.Client.Backfill(ctx, plan.Query, cfg.Max)
 					out <- backfillChunkMsg{
 						prs: res.PRs, viewer: res.Viewer, since: since,
-						window: plan.Window, needs: gh.BackfillShapes, err: err,
+						window: plan.Window, needs: plan.Needs, err: err,
 					}
 				}
 			}()
@@ -514,7 +531,7 @@ func (m Model) runBackfill() tea.Cmd {
 		// Handed out newest window first, so what lands first is what happened
 		// most recently — which is what the reader wants and what the top of
 		// the feed is. Stops feeding the moment the backlog is full.
-		planned := gh.BackfillSearches(cfg.Extra, since, started)
+		planned := gh.BackfillSearches(cfg.Extra, since, started, cfg.Watch)
 	feed:
 		for _, plan := range planned {
 			select {
@@ -530,7 +547,7 @@ func (m Model) runBackfill() tea.Cmd {
 		// until its turn regardless.
 		if len(cached) > 0 {
 			out <- backfillChunkMsg{
-				window: len(planned) / gh.BackfillShapes,
+				window: len(backfillWindowCount(planned)),
 				needs:  1,
 				cached: cached,
 				since:  since,
@@ -1038,7 +1055,7 @@ func (m Model) saveWatermark() tea.Cmd {
 		return nil
 	}
 	from, until := m.backfillSince(), m.startedAt
-	scope := gh.BackfillScope(m.cfg.Extra)
+	scope := gh.BackfillScope(m.cfg.Extra, m.cfg.Watch)
 	return func() tea.Msg {
 		// The same fact, said twice: this stretch has now been covered
 		// properly, so the record can claim it and stop keeping the

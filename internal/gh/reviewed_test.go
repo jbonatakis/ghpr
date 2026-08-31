@@ -19,7 +19,7 @@ import (
 // your review, most of all — was invisible to the feed.
 func TestAPullRequestYouReviewedIsSearchedFor(t *testing.T) {
 	now := time.Date(2026, 8, 31, 12, 0, 0, 0, time.UTC)
-	got := BackfillSearches("", now.Add(-24*time.Hour), now)
+	got := BackfillSearches("", now.Add(-24*time.Hour), now, AllShapes)
 
 	var queries []string
 	for _, p := range got {
@@ -46,22 +46,32 @@ func TestAPullRequestYouReviewedIsSearchedFor(t *testing.T) {
 		}
 	}
 	for window, shapes := range perWindow {
-		if len(shapes) != BackfillShapes {
-			t.Errorf("window %d is searched %d ways, want %d", window, len(shapes), BackfillShapes)
+		if len(shapes) != len(AllShapes) {
+			t.Errorf("window %d is searched %d ways, want %d", window, len(shapes), len(AllShapes))
 		}
 	}
 }
 
-// BackfillShapes is what tells a caller when a window has been answered in
-// full. If it drifts from the number of searches, windows either never release
-// or release before they are complete.
+// A window is released once every one of its searches has answered, so the
+// count carried on each plan has to match how many there actually are.
 func TestTheShapeCountMatchesTheSearches(t *testing.T) {
 	now := time.Date(2026, 8, 31, 12, 0, 0, 0, time.UTC)
-	if got := len(BackfillSearches("", now.Add(-20*time.Minute), now)); got != BackfillShapes {
-		t.Errorf("one window is %d searches, but BackfillShapes says %d", got, BackfillShapes)
+	plans := BackfillSearches("", now.Add(-20*time.Minute), now, AllShapes)
+	if len(plans) != len(AllShapes) {
+		t.Fatalf("one window is %d searches, want one per shape (%d)", len(plans), len(AllShapes))
 	}
-	if len(backfillShapes) != BackfillShapes {
-		t.Errorf("%d shapes defined, BackfillShapes says %d", len(backfillShapes), BackfillShapes)
+	for _, p := range plans {
+		if p.Needs != len(AllShapes) {
+			t.Errorf("%s says its window needs %d answers, but %d searches cover it",
+				p.Shape, p.Needs, len(AllShapes))
+		}
+	}
+
+	// A narrower selection has to say so, or windows wait for answers that are
+	// never coming.
+	only := BackfillSearches("", now.Add(-20*time.Minute), now, []Shape{ShapeRequested})
+	if len(only) != 1 || only[0].Needs != 1 {
+		t.Fatalf("one shape produced %d searches", len(only))
 	}
 }
 

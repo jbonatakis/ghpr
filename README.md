@@ -58,6 +58,7 @@ ghpr -once                            # plain-text snapshot, no TUI
 | `-once` | – | print a snapshot and exit — good for scripts and cron |
 | `-why-seed` | – | account for the startup backfill pull request by pull request, and exit |
 | `-remember` | `true` | keep the activity feed between runs (`-remember=false` for memory only) |
+| `-watch` | `involved,requested,reviewed` | which pull requests reach the activity feed |
 
 ## Keys
 
@@ -402,14 +403,26 @@ is:pr archived:false involves:@me          updated:2026-08-28T10:00..2026-08-28T
   it from whichever one happens to be selected contradicts the thing it is. A
   dashboard opened on `authored` would reconstruct a morning with everything
   you reviewed left out of it. Three searches, because GitHub cannot express
-  the union and the gaps between its qualifiers are not obvious. `involves:@me`
-  is author OR assignee OR mentions OR commenter — reviewing is **not** on that
-  list. `review-requested:@me` matches only while a review is still
-  outstanding; submitting it removes you. So a pull request you reviewed and
-  did not comment on fell between the two, and everything that happened on it
-  afterwards — the commits pushed in answer to your review, above all — was
-  invisible. `reviewed-by:@me` is the qualifier that covers it. They overlap,
-  and anything found by more than one is seeded once.
+  the union and the gaps between its qualifiers are not obvious:
+
+  | `-watch` | qualifier | what it reaches |
+  | --- | --- | --- |
+  | `involved` | `involves:@me` | author, assignee, mentions, commenter |
+  | `requested` | `review-requested:@me` | a review asked of you and not yet given — including one asked of a team, which is how CODEOWNERS assigns most reviews |
+  | `reviewed` | `reviewed-by:@me` | you have already reviewed it |
+
+  Reviewing is **not** part of `involves`, and `review-requested` stops
+  matching the moment you submit the review — so a pull request you reviewed
+  and did not comment on once fell between them, and the commits pushed in
+  answer to your review were invisible. The three overlap, and anything found
+  by more than one is seeded once.
+
+  `-watch` selects among them: `-watch involved,reviewed` drops review requests
+  if CODEOWNERS assigns you more than you want to hear about, and
+  `-watch requested` narrows the feed to just what is waiting on you. The
+  selection is part of the coverage scope, so turning one on re-searches the
+  stretches it was previously absent from rather than trusting a mark left by
+  searches that never ran.
 - **Pull requests that already finished.** Neither search says `is:open`, so
   what was merged or closed inside the window comes back too, with `✔ merged`
   and `× closed` lines of its own — for anyone who ships, that is most of the

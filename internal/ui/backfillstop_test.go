@@ -86,7 +86,7 @@ func TestTheBackfillStopsOnceTheBacklogIsFull(t *testing.T) {
 
 	m := New(Config{
 		Client: c, Mode: gh.ModeAuthored, Interval: 30 * time.Second,
-		Max: 200, Prefs: config.Defaults(), Links: true, Seed: 720 * time.Hour,
+		Max: 200, Prefs: config.Defaults(), Links: true, Seed: 720 * time.Hour, Watch: gh.AllShapes,
 	})
 	m = update(m, tea.WindowSizeMsg{Width: 140, Height: 40})
 
@@ -140,7 +140,7 @@ func TestASmallBackfillStillSearchesEveryWindow(t *testing.T) {
 
 	m := New(Config{
 		Client: c, Mode: gh.ModeAuthored, Interval: 30 * time.Second,
-		Max: 200, Prefs: config.Defaults(), Links: true, Seed: 720 * time.Hour,
+		Max: 200, Prefs: config.Defaults(), Links: true, Seed: 720 * time.Hour, Watch: gh.AllShapes,
 	})
 	m = update(m, tea.WindowSizeMsg{Width: 140, Height: 40})
 
@@ -168,5 +168,5 @@ func TestASmallBackfillStillSearchesEveryWindow(t *testing.T) {
 // on the span, not on when it is asked.
 func plannedSearches(span time.Duration) int {
 	now := time.Now()
-	return len(gh.BackfillSearches("", now.Add(-span), now))
+	return len(gh.BackfillSearches("", now.Add(-span), now, gh.AllShapes))
 }

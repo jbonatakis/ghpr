@@ -163,9 +163,9 @@ func TestBackfillSeedsWhatThePollCannotSee(t *testing.T) {
 func TestBackfillSearchesCoverEverythingYouTouch(t *testing.T) {
 	now := time.Date(2026, 7, 29, 15, 0, 0, 0, time.UTC)
 	since := now.Add(-30 * time.Minute) // one window's worth, so two searches
-	got := BackfillSearches("", since, now)
+	got := BackfillSearches("", since, now, AllShapes)
 
-	if len(got) != BackfillShapes {
+	if len(got) != len(AllShapes) {
 		t.Fatalf("got %d searches: %+v", len(got), got)
 	}
 	var queries []string
@@ -227,7 +227,7 @@ func TestBackfillWindowCountStaysSmall(t *testing.T) {
 			t.Errorf("%s span produced no windows at all", tc.span)
 		}
 		// Two search shapes per window.
-		if want := len(got) * BackfillShapes; len(BackfillSearches("", now.Add(-tc.span), now)) != want {
+		if want := len(got) * len(AllShapes); len(BackfillSearches("", now.Add(-tc.span), now, AllShapes)) != want {
 			t.Errorf("%s span: searches and windows disagree", tc.span)
 		}
 	}
@@ -279,7 +279,7 @@ func TestAShortSpanIsASingleWindow(t *testing.T) {
 // is full.
 func TestBackfillSearchesRunNewestWindowFirst(t *testing.T) {
 	now := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
-	got := BackfillSearches("", now.Add(-24*time.Hour), now)
+	got := BackfillSearches("", now.Add(-24*time.Hour), now, AllShapes)
 
 	for i := 1; i < len(got); i++ {
 		if got[i].From.After(got[i-1].From) {
@@ -321,7 +321,7 @@ func TestBackfillWindowsLeaveNoGap(t *testing.T) {
 
 func TestBackfillSearchesKeepTheUsersOwnQualifiers(t *testing.T) {
 	now := time.Date(2026, 7, 29, 15, 0, 0, 0, time.UTC)
-	for _, plan := range BackfillSearches("org:acme", now.Add(-24*time.Hour), now) {
+	for _, plan := range BackfillSearches("org:acme", now.Add(-24*time.Hour), now, AllShapes) {
 		if !strings.Contains(plan.Query, "org:acme") {
 			t.Errorf("-query was dropped from %q", plan.Query)
 		}

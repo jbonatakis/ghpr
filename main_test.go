@@ -119,7 +119,7 @@ func capture(t *testing.T, fn func() error) string {
 func TestWhySeedExplainsAQuietWindow(t *testing.T) {
 	cfg := ui.Config{
 		Client: fixtureServer(t), Mode: gh.ModeAuthored, Max: 200,
-		Prefs: config.Defaults(), Seed: time.Hour,
+		Prefs: config.Defaults(), Seed: time.Hour, Watch: gh.AllShapes,
 	}
 	out := capture(t, func() error { return explainSeed(cfg) })
 
@@ -142,7 +142,7 @@ func TestWhySeedExplainsAQuietWindow(t *testing.T) {
 func TestWhySeedExplainsAWideWindow(t *testing.T) {
 	cfg := ui.Config{
 		Client: fixtureServer(t), Mode: gh.ModeAuthored, Max: 200,
-		Prefs: config.Defaults(), Seed: 100000 * time.Hour,
+		Prefs: config.Defaults(), Seed: 100000 * time.Hour, Watch: gh.AllShapes,
 	}
 	out := capture(t, func() error { return explainSeed(cfg) })
 

@@ -22,7 +22,7 @@ func remembering(t *testing.T, seed time.Duration, cached []gh.Event, watermark 
 	}
 	m := New(Config{
 		Client: gh.NewClient("test"), Mode: gh.ModeAuthored, Interval: 30 * time.Second,
-		Max: 200, Prefs: config.Defaults(), Links: true, Seed: seed,
+		Max: 200, Prefs: config.Defaults(), Links: true, Seed: seed, Watch: gh.AllShapes,
 		Log: log, Cached: cached, Watermark: watermark,
 	})
 	return update(m, tea.WindowSizeMsg{Width: 140, Height: 40})
@@ -56,7 +56,7 @@ func TestTheSavedFeedLandsUnderTheSearches(t *testing.T) {
 	}
 
 	// The saved record arrives as the window behind the planned ones.
-	last := len(gh.BackfillSearches("", watermark, now)) / gh.BackfillShapes
+	last := len(gh.BackfillSearches("", watermark, now, gh.AllShapes)) / len(gh.AllShapes)
 	m = m.applyBackfillChunk(backfillChunkMsg{
 		window: last, needs: 1, cached: cached, since: watermark,
 	})
@@ -103,8 +103,8 @@ func TestAFreshWatermarkShrinksTheGap(t *testing.T) {
 		t.Errorf("the gap is %s; the record already covers all but twenty minutes", gap)
 	}
 	// One window of searching rather than a day of it.
-	planned := len(gh.BackfillSearches("", since, m.startedAt))
-	full := len(gh.BackfillSearches("", m.startedAt.Add(-24*time.Hour), m.startedAt))
+	planned := len(gh.BackfillSearches("", since, m.startedAt, gh.AllShapes))
+	full := len(gh.BackfillSearches("", m.startedAt.Add(-24*time.Hour), m.startedAt, gh.AllShapes))
 	if planned >= full {
 		t.Errorf("planned %d searches against %d for the whole window", planned, full)
 	}
@@ -174,14 +174,14 @@ func TestOnlyASuccessfulBackfillClaimsCoverage(t *testing.T) {
 		t.Fatal("a clean run offered to claim no coverage")
 	}
 	cmd()
-	if got := clean.cfg.Log.Watermark(gh.BackfillScope("")); !got.Equal(clean.startedAt) {
+	if got := clean.cfg.Log.Watermark(gh.BackfillScope("", gh.AllShapes)); !got.Equal(clean.startedAt) {
 		t.Errorf("claimed coverage up to %s, want the moment this run began (%s)",
 			got, clean.startedAt)
 	}
 
 	failed := remembering(t, time.Hour, nil, now.Add(-30*time.Minute))
 	failed = failed.applyBackfillChunk(backfillChunkMsg{
-		window: 0, needs: gh.BackfillShapes, err: &gh.TransientError{Detail: "502"},
+		window: 0, needs: len(gh.AllShapes), err: &gh.TransientError{Detail: "502"},
 	})
 	if !failed.seedFailed {
 		t.Fatal("the failure went unrecorded")

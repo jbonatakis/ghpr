@@ -93,39 +93,89 @@ func (m Mode) Query(extra string) string {
 // contribute to the seed, so fetching it is pure waste. GitHub's search dates
 // are days rather than instants, so the bound is rounded down to midnight and
 // Seed discards whatever falls outside the real window.
-func BackfillSearches(extra string, since, now time.Time) []BackfillPlan {
+func BackfillSearches(extra string, since, now time.Time, shapes []Shape) []BackfillPlan {
+	if len(shapes) == 0 {
+		return nil
+	}
 	var out []BackfillPlan
 	extra = strings.TrimSpace(extra)
 	for i, w := range backfillWindows(since, now) {
-		for _, who := range backfillShapes {
-			q := "is:pr archived:false " + who + w.qualifier() + " " + extra
+		for _, shape := range shapes {
+			q := "is:pr archived:false " + shape.qualifier() + w.qualifier() + " " + extra
 			out = append(out, BackfillPlan{
 				Query: strings.TrimSpace(q), From: w.from, To: w.to,
-				Newest: w.newest, Window: i,
+				Newest: w.newest, Window: i, Shape: shape, Needs: len(shapes),
 			})
 		}
 	}
 	return out
 }
 
-// backfillShapes are the searches run over every window. GitHub cannot express
-// their union in a single query, and each covers a gap the others leave.
-//
-// involves is author OR assignee OR mentions OR commenter — reviewing is not on
-// that list. review-requested only matches while a review is still outstanding;
-// submitting one removes you from it. So a pull request you reviewed and did
-// not comment on matched neither, and everything that happened on it afterwards
-// — the commits pushed in answer to your review, most of all — was invisible.
-// reviewed-by is the qualifier that covers it.
-var backfillShapes = []string{
-	"involves:@me ",
-	"review-requested:@me ",
-	"reviewed-by:@me ",
+// A Shape is one way a pull request can matter to someone. GitHub cannot
+// express their union in a single query, and each covers a gap the others
+// leave, so the backfill runs one search per shape over every window.
+type Shape string
+
+const (
+	// ShapeInvolved is author OR assignee OR mentions OR commenter. Reviewing
+	// is not on that list, which is the gap the other two exist to close.
+	ShapeInvolved Shape = "involved"
+
+	// ShapeRequested is a review asked of you and not yet given — including one
+	// asked of a team you are on, which is how CODEOWNERS assigns most reviews.
+	// It stops matching the moment you submit the review.
+	ShapeRequested Shape = "requested"
+
+	// ShapeReviewed is a pull request you have already reviewed, which is where
+	// the answer to your review lands and where requested stops looking.
+	ShapeReviewed Shape = "reviewed"
+)
+
+// AllShapes is what the backfill covers unless told otherwise.
+var AllShapes = []Shape{ShapeInvolved, ShapeRequested, ShapeReviewed}
+
+func (s Shape) qualifier() string {
+	switch s {
+	case ShapeRequested:
+		return "review-requested:@me "
+	case ShapeReviewed:
+		return "reviewed-by:@me "
+	}
+	return "involves:@me "
 }
 
-// BackfillShapes is how many searches cover each window, so a caller can tell
-// when a window has been answered in full.
-const BackfillShapes = 3
+// ParseShapes reads a comma-separated selection, in the order given.
+func ParseShapes(list string) ([]Shape, error) {
+	list = strings.TrimSpace(list)
+	if list == "" {
+		return nil, nil
+	}
+	var out []Shape
+	seen := map[Shape]bool{}
+	for _, name := range strings.Split(list, ",") {
+		s := Shape(strings.ToLower(strings.TrimSpace(name)))
+		switch s {
+		case "":
+			continue
+		case ShapeInvolved, ShapeRequested, ShapeReviewed:
+		default:
+			return nil, fmt.Errorf("unknown watch %q: want involved, requested or reviewed", name)
+		}
+		if !seen[s] {
+			seen[s], out = true, append(out, s)
+		}
+	}
+	return out, nil
+}
+
+// ShapeNames renders a selection for display and for the coverage scope.
+func ShapeNames(shapes []Shape) string {
+	names := make([]string, 0, len(shapes))
+	for _, s := range shapes {
+		names = append(names, string(s))
+	}
+	return strings.Join(names, ",")
+}
 
 // BackfillScope names what the searches reach, so a record of having covered
 // some stretch of time can say what it covered it *with*.
@@ -136,8 +186,8 @@ const BackfillShapes = 3
 // as covered stayed marked — so the one thing that would have gone and found
 // them was skipped, and a wider -seed changed nothing. Recording the scope
 // alongside makes a claim expire when it stops being true.
-func BackfillScope(extra string) string {
-	return strings.Join(backfillShapes, "") + "|" + strings.TrimSpace(extra)
+func BackfillScope(extra string, shapes []Shape) string {
+	return ShapeNames(shapes) + "|" + strings.TrimSpace(extra)
 }
 
 // BackfillPlan is one search the backfill will run.
@@ -155,6 +205,11 @@ type BackfillPlan struct {
 	From, To time.Time
 	Newest   bool
 	Window   int
+	Shape    Shape
+
+	// Needs is how many searches cover this plan's window, so a caller can
+	// tell when the window has been answered in full.
+	Needs int
 }
 
 type backfillWindow struct {

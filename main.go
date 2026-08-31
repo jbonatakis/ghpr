@@ -35,6 +35,7 @@ func main() {
 		showCfg  = flag.Bool("config", false, "print the config file path and exit")
 		links    = flag.Bool("links", true, "make pull request references clickable (-links=false to disable)")
 		remember = flag.Bool("remember", true, "keep the activity feed between runs (-remember=false to keep it in memory only)")
+		watch    = flag.String("watch", "involved,requested,reviewed", "which pull requests reach the activity feed: involved (authored, commented, assigned, mentioned), requested (a review asked of you, including via a CODEOWNERS team), reviewed (you have already reviewed it)")
 		showVer  = flag.Bool("version", false, "print version and exit")
 	)
 	flag.Usage = usage
@@ -78,6 +79,10 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
+	shapes, err := gh.ParseShapes(*watch)
+	if err != nil {
+		fail(err)
+	}
 	if *interval < 5*time.Second {
 		fail(fmt.Errorf("interval must be at least 5s (GitHub rate limits)"))
 	}
@@ -100,6 +105,7 @@ func main() {
 		Prefs:    prefs,
 		Links:    *links,
 		Seed:     *seed,
+		Watch:    shapes,
 	}
 
 	// Read before the dashboard starts. It is one small file, and the backfill
@@ -111,7 +117,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, "ghpr: not keeping activity between runs:", err)
 		} else {
 			now := time.Now()
-			watermark := log.Watermark(gh.BackfillScope(*extra))
+			watermark := log.Watermark(gh.BackfillScope(*extra, shapes))
 			cached, dropped, err := log.Prepare(now)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "ghpr: could not tidy the activity log:", err)
@@ -215,8 +221,13 @@ func explainSeed(cfg ui.Config) error {
 	var (
 		res  gh.Result
 		seen = map[string]bool{}
+		// Which searches turned each pull request up. Whether something is
+		// reached at all, and by which of them, is the first thing worth
+		// knowing when the feed is missing a whole category of work.
+		foundBy  = map[string][]gh.Shape{}
+		perShape = map[gh.Shape]int{}
 	)
-	plans := gh.BackfillSearches(cfg.Extra, since, time.Now())
+	plans := gh.BackfillSearches(cfg.Extra, since, time.Now(), cfg.Watch)
 	for _, plan := range plans {
 		found, err := cfg.Client.Backfill(ctx, plan.Query, cfg.Max)
 		if err != nil {
@@ -230,10 +241,15 @@ func explainSeed(cfg ui.Config) error {
 		}
 		res.RateLimit = found.RateLimit
 		for _, p := range found.PRs {
-			if seen[p.Key()] {
+			key := p.Key()
+			if !hasShape(foundBy[key], plan.Shape) {
+				foundBy[key] = append(foundBy[key], plan.Shape)
+				perShape[plan.Shape]++
+			}
+			if seen[key] {
 				continue
 			}
-			seen[p.Key()] = true
+			seen[key] = true
 			res.PRs = append(res.PRs, p)
 		}
 	}
@@ -246,7 +262,12 @@ func explainSeed(cfg ui.Config) error {
 	}
 	fmt.Printf("%s · %d pull requests touched in the window (%d of them finished)\n",
 		res.Viewer, len(res.PRs), closed)
-	fmt.Printf("searched (%d, run %d at a time, newest window first):\n", len(plans), 4)
+	fmt.Printf("watching %s · searched %d ways over %d windows, four at a time\n",
+		gh.ShapeNames(cfg.Watch), len(cfg.Watch), len(plans)/max(1, len(cfg.Watch)))
+	for _, shape := range cfg.Watch {
+		fmt.Printf("    %-10s reached %d pull requests\n", shape, perShape[shape])
+	}
+	fmt.Println("newest window first:")
 	for _, plan := range plans {
 		fmt.Printf("    %s\n", plan.Query)
 	}
@@ -284,7 +305,8 @@ func explainSeed(cfg ui.Config) error {
 		if p.State != "" {
 			what = strings.ToLower(string(p.State))
 		}
-		fmt.Printf("%-46s %-7s %d seeded\n", p.Key(), what, len(events))
+		fmt.Printf("%-46s %-7s %d seeded   found by %s\n",
+			p.Key(), what, len(events), shapeList(foundBy[p.Key()]))
 		fmt.Printf("    opened          %s\n", when(p.CreatedAt))
 		fmt.Printf("    head commit     %s\n", when(p.PushedAt))
 		fmt.Printf("    newest check    %s\n", when(p.ChecksAt))
@@ -335,6 +357,10 @@ func explainSeed(cfg ui.Config) error {
 		fmt.Println("Lines marked \"outside\" would come back with a wider -seed. Lines marked")
 		fmt.Println("\"not reported\" never had a date to begin with and no window will reach")
 		fmt.Println("them — a review request and a conflict appearing are the two that never do.")
+		fmt.Println()
+		fmt.Println("If a pull request you expected is absent entirely, no search reached it:")
+		fmt.Println("compare the \"found by\" column against what you expected, and check the")
+		fmt.Println("counts above for a shape that reached nothing at all.")
 	}
 	return nil
 }
@@ -361,6 +387,22 @@ func trunc(s string, w int) string {
 		return s[:w]
 	}
 	return s
+}
+
+func hasShape(list []gh.Shape, want gh.Shape) bool {
+	for _, s := range list {
+		if s == want {
+			return true
+		}
+	}
+	return false
+}
+
+func shapeList(shapes []gh.Shape) string {
+	if len(shapes) == 0 {
+		return "nothing"
+	}
+	return gh.ShapeNames(shapes)
 }
 
 // snapshot prints one plain-text listing, for pipes, cron and scripts.

@@ -22,7 +22,7 @@ func windowPR(n int, at time.Time) gh.PR {
 func deliver(m Model, window int, since time.Time, prs ...gh.PR) Model {
 	return m.applyBackfillChunk(backfillChunkMsg{
 		prs: prs, viewer: "jbonatakis", since: since,
-		window: window, needs: gh.BackfillShapes,
+		window: window, needs: len(gh.AllShapes),
 	})
 }
 
@@ -30,7 +30,7 @@ func deliver(m Model, window int, since time.Time, prs ...gh.PR) Model {
 // requests and the rest empty, which is how a window actually completes.
 func finish(m Model, window int, since time.Time, prs ...gh.PR) Model {
 	m = deliver(m, window, since, prs...)
-	for i := 1; i < gh.BackfillShapes; i++ {
+	for i := 1; i < len(gh.AllShapes); i++ {
 		m = deliver(m, window, since)
 	}
 	return m
@@ -121,10 +121,10 @@ func TestAFailedWindowDoesNotStrandTheOnesBehindIt(t *testing.T) {
 
 	// Window 0 fails outright.
 	fail := backfillChunkMsg{
-		since: since, window: 0, needs: gh.BackfillShapes,
+		since: since, window: 0, needs: len(gh.AllShapes),
 		err: &gh.TransientError{Detail: "502"},
 	}
-	for i := 0; i < gh.BackfillShapes; i++ {
+	for i := 0; i < len(gh.AllShapes); i++ {
 		m = m.applyBackfillChunk(fail)
 	}
 

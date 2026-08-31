@@ -108,7 +108,7 @@ func runBackfill(t *testing.T, c *gh.Client, window time.Duration) (Model, []bac
 	isolateConfig(t)
 	m := New(Config{
 		Client: c, Mode: gh.ModeAuthored, Interval: 30 * time.Second,
-		Max: 200, Prefs: config.Defaults(), Links: true, Seed: window,
+		Max: 200, Prefs: config.Defaults(), Links: true, Seed: window, Watch: gh.AllShapes,
 	})
 	m = update(m, tea.WindowSizeMsg{Width: 140, Height: 40})
 
@@ -144,7 +144,7 @@ func TestTheBackfillIsNotScopedToTheDashboardMode(t *testing.T) {
 	runBackfill(t, srv.start(t, onePR(t)), 20*time.Minute)
 
 	asked := srv.asked()
-	if len(asked) != gh.BackfillShapes {
+	if len(asked) != len(gh.AllShapes) {
 		t.Fatalf("ran %d searches: %q", len(asked), asked)
 	}
 	joined := strings.Join(asked, " || ")
@@ -292,7 +292,7 @@ func TestOneFailedSearchDoesNotLoseTheOther(t *testing.T) {
 
 	m := New(Config{
 		Client: c, Mode: gh.ModeAuthored, Interval: 30 * time.Second,
-		Max: 200, Prefs: config.Defaults(), Links: true, Seed: 720 * time.Hour,
+		Max: 200, Prefs: config.Defaults(), Links: true, Seed: 720 * time.Hour, Watch: gh.AllShapes,
 	})
 	m = update(m, tea.WindowSizeMsg{Width: 140, Height: 40})
 
@@ -329,7 +329,7 @@ func TestBothSearchesFailingIsReportedAsAnError(t *testing.T) {
 
 	m := New(Config{
 		Client: c, Mode: gh.ModeAuthored, Interval: 30 * time.Second,
-		Max: 200, Prefs: config.Defaults(), Links: true, Seed: time.Hour,
+		Max: 200, Prefs: config.Defaults(), Links: true, Seed: time.Hour, Watch: gh.AllShapes,
 	})
 	m = update(m, tea.WindowSizeMsg{Width: 140, Height: 40})
 

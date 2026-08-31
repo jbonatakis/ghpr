@@ -19,7 +19,7 @@ func newSeeding(t *testing.T, window time.Duration) Model {
 	m := New(Config{
 		Client: gh.NewClient("test"), Mode: gh.ModeAuthored,
 		Interval: 30 * time.Second, Max: 200, Prefs: config.Defaults(),
-		Links: true, Seed: window,
+		Links: true, Seed: window, Watch: gh.AllShapes,
 	})
 	return update(m, tea.WindowSizeMsg{Width: 140, Height: 40})
 }
