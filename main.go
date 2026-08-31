@@ -508,6 +508,31 @@ func explainOne(cfg ui.Config, ref string) error {
 	}
 	fmt.Println()
 
+	// Whether it is on record settles the other half of the question. "It is
+	// not in my feed" and "it was never captured" are different complaints, and
+	// the saved log knows which one this is.
+	key := got.Repo + "#" + strconv.Itoa(got.Number)
+	var saved []gh.Event
+	for _, e := range cfg.Cached {
+		if e.Key == key {
+			saved = append(saved, e)
+		}
+	}
+	switch {
+	case cfg.Log == nil:
+		fmt.Println("nothing is kept between runs (-remember=false), so there is no record")
+		fmt.Println("of whether it was ever in the feed before")
+	case len(saved) == 0:
+		fmt.Println("the saved feed holds nothing for it, so it has not been captured before")
+	default:
+		fmt.Printf("the saved feed already holds %d lines for it, %s to %s\n",
+			len(saved),
+			saved[0].At.Local().Format("2006-01-02 15:04"),
+			saved[len(saved)-1].At.Local().Format("2006-01-02 15:04"))
+		fmt.Println("so it has been in the feed — press e and filter with / to find it again")
+	}
+	fmt.Println()
+
 	switch {
 	case len(reached) > 0:
 		fmt.Printf("Reached by %s, so it is in the feed's scope. If it still shows no\n",

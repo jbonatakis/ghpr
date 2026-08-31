@@ -485,12 +485,20 @@ If one particular pull request is missing, name it:
 ghpr -why-seed -why-pr acme/hyperspace#86
 ```
 
-That fetches it directly, sidestepping every search, and shows two things the
-search results cannot: who the review is actually requested of — a person or a
-team, and CODEOWNERS usually names a team — and then whether each search
-reaches it. A pull request nothing reaches is a coverage problem; one that is
-reached but shows no activity has nothing in it that can be dated. Those are
-opposite problems and used to look identical.
+That fetches it directly, sidestepping every search, and answers three
+questions the feed cannot:
+
+- **Who is the review actually requested of** — a person or a team. CODEOWNERS
+  usually names a team, and `review-requested:@me` does match those, so being
+  on the team is enough to reach it.
+- **Which searches reach it.** Nothing reaching it is a coverage problem;
+  something reaching it while the feed stays empty means nothing on it carries
+  a date inside the window. Those are opposite problems that used to look
+  identical.
+- **Whether it is already on record**, with how many lines and over what span —
+  which settles "it was never captured" against "I could not find it", the
+  other pair that looks the same from outside. `e` then `/` filters the feed if
+  it is there.
 
 If the feed as a whole comes up thinner than you expected, `-why-seed` says why,
 and is the fastest way to tell a genuinely quiet month from activity the query
