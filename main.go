@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,6 +33,7 @@ func main() {
 		api      = flag.String("api", "", "GraphQL endpoint, for GitHub Enterprise Server")
 		once     = flag.Bool("once", false, "print a one-shot plain-text snapshot and exit")
 		why      = flag.Bool("why-seed", false, "explain what the startup backfill can and cannot see, and exit")
+		whyPR    = flag.String("why-pr", "", "with -why-seed, account for one pull request in particular: owner/repo#123")
 		showCfg  = flag.Bool("config", false, "print the config file path and exit")
 		links    = flag.Bool("links", true, "make pull request references clickable (-links=false to disable)")
 		remember = flag.Bool("remember", true, "keep the activity feed between runs (-remember=false to keep it in memory only)")
@@ -129,6 +131,12 @@ func main() {
 	}
 
 	if *why {
+		if ref := strings.TrimSpace(*whyPR); ref != "" {
+			if err := explainOne(cfg, ref); err != nil {
+				fail(err)
+			}
+			return
+		}
 		if err := explainSeed(cfg); err != nil {
 			fail(err)
 		}
@@ -404,6 +412,120 @@ func trunc(s string, w int) string {
 		return s[:w]
 	}
 	return s
+}
+
+// explainOne accounts for a single pull request.
+//
+// A pull request missing from the feed has two possible reasons, and from
+// outside they look identical: no search reaches it, or the searches reach it
+// and nothing in it can be dated. Fetching it by name sidesteps every search,
+// so the two can be told apart — and it shows what the searches would have had
+// to match, which for a review assigned by CODEOWNERS is usually a team rather
+// than a person.
+func explainOne(cfg ui.Config, ref string) error {
+	owner, name, number, err := gh.ParsePRRef(ref)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+
+	got, err := cfg.Client.Lookup(ctx, owner, name, number)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%s#%d  %s\n", got.Repo, got.Number, got.Title)
+	fmt.Printf("    %s · opened by %s · updated %s\n",
+		strings.ToLower(got.State), got.Author, got.UpdatedAt)
+	fmt.Println()
+
+	fmt.Println("review requested from:")
+	if len(got.Requests) == 0 {
+		fmt.Println("    nobody — any request has been withdrawn or already answered")
+	}
+	var viaTeam, viaUser bool
+	for _, r := range got.Requests {
+		kind := "person"
+		if r.Team {
+			kind = "team"
+		}
+		mine := ""
+		if !r.Team && strings.EqualFold(r.Name, got.Viewer) {
+			mine, viaUser = "   <- you, by name", true
+		}
+		if r.Team {
+			viaTeam = true
+		}
+		fmt.Printf("    %-6s %s%s\n", kind, r.Name, mine)
+	}
+	var reviewed bool
+	for _, r := range got.Reviewers {
+		if strings.EqualFold(r.Login, got.Viewer) {
+			reviewed = true
+		}
+	}
+	fmt.Println()
+
+	// Now the part that matters: does anything the backfill runs actually
+	// return it?
+	now := time.Now()
+	window := cfg.Seed
+	if window <= 0 {
+		window = time.Hour
+	}
+	since := now.Add(-window)
+
+	fmt.Printf("searching for it (%s over the last %s):\n",
+		gh.ShapeNames(cfg.Watch), tidy(window))
+	var reached []gh.Shape
+	for _, shape := range cfg.Watch {
+		plans := gh.BackfillSearches(cfg.Extra, since, now, []gh.Shape{shape})
+		var hit bool
+		for _, plan := range plans {
+			res, err := cfg.Client.Backfill(ctx, plan.Query, cfg.Max)
+			if err != nil {
+				fmt.Printf("    %-10s search failed: %s\n", shape, gh.CleanMessage(err.Error(), 60))
+				hit = true // unknown rather than absent; do not claim a miss
+				break
+			}
+			for _, p := range res.PRs {
+				if p.Key() == got.Repo+"#"+strconv.Itoa(got.Number) {
+					hit = true
+					break
+				}
+			}
+			if hit {
+				break
+			}
+		}
+		if hit {
+			reached = append(reached, shape)
+			fmt.Printf("    %-10s reaches it\n", shape)
+		} else {
+			fmt.Printf("    %-10s does not\n", shape)
+		}
+	}
+	fmt.Println()
+
+	switch {
+	case len(reached) > 0:
+		fmt.Printf("Reached by %s, so it is in the feed's scope. If it still shows no\n",
+			gh.ShapeNames(reached))
+		fmt.Println("activity, nothing on it carries a date inside the window — run -why-seed")
+		fmt.Println("without -why-pr and read its line there.")
+	case viaTeam && !viaUser && !reviewed:
+		fmt.Println("Nothing reaches it, and the review is requested of a team rather than")
+		fmt.Println("of you by name. review-requested:@me is not matching the team, so a")
+		fmt.Println("pull request assigned to you this way is outside every search ghpr runs.")
+		fmt.Println("This is the case to report back: it needs team-review-requested, which")
+		fmt.Println("means looking up which teams you are on.")
+	default:
+		fmt.Println("Nothing reaches it. Compare the requests above against the searches:")
+		fmt.Println("involves is author, assignee, mentions or commenter; requested is a")
+		fmt.Println("review still outstanding; reviewed is one you have already given.")
+	}
+	return nil
 }
 
 func hasShape(list []gh.Shape, want gh.Shape) bool {

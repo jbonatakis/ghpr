@@ -57,6 +57,7 @@ ghpr -once                            # plain-text snapshot, no TUI
 | `-links` | `true` | clickable pull request references (`-links=false` to disable) |
 | `-once` | – | print a snapshot and exit — good for scripts and cron |
 | `-why-seed` | – | account for the startup backfill pull request by pull request, and exit |
+| `-why-pr` | – | with `-why-seed`, account for one pull request: `owner/repo#123` |
 | `-remember` | `true` | keep the activity feed between runs (`-remember=false` for memory only) |
 | `-watch` | `involved,requested,reviewed` | which pull requests reach the activity feed |
 
@@ -478,9 +479,22 @@ response dates them:
 - `◷ review requested` — `reviewRequests` carries no date; only GitHub's
   timeline API has one, and that is a query per pull request.
 
-If the feed comes up thinner than you expected, `-why-seed` says why, and is
-the fastest way to tell a genuinely quiet month from activity the query cannot
-see:
+If one particular pull request is missing, name it:
+
+```sh
+ghpr -why-seed -why-pr acme/hyperspace#86
+```
+
+That fetches it directly, sidestepping every search, and shows two things the
+search results cannot: who the review is actually requested of — a person or a
+team, and CODEOWNERS usually names a team — and then whether each search
+reaches it. A pull request nothing reaches is a coverage problem; one that is
+reached but shows no activity has nothing in it that can be dated. Those are
+opposite problems and used to look identical.
+
+If the feed as a whole comes up thinner than you expected, `-why-seed` says why,
+and is the fastest way to tell a genuinely quiet month from activity the query
+cannot see:
 
 ```sh
 ghpr -why-seed -seed 720h
