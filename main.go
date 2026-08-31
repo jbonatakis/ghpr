@@ -112,14 +112,7 @@ func main() {
 		} else {
 			now := time.Now()
 			watermark := log.Watermark()
-			// The same clamp the backfill will apply, because what it is about
-			// to re-cover is exactly what the log should stop holding an
-			// approximate copy of.
-			since := now.Add(-*seed)
-			if watermark.After(since) {
-				since = watermark
-			}
-			cached, dropped, err := log.Prepare(now, since)
+			cached, dropped, err := log.Prepare(now)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "ghpr: could not tidy the activity log:", err)
 			} else if dropped > 0 && *once {

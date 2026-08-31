@@ -1037,9 +1037,13 @@ func (m Model) saveWatermark() tea.Cmd {
 		// ever looked at.
 		return nil
 	}
-	at := m.startedAt
+	from, until := m.backfillSince(), m.startedAt
 	return func() tea.Msg {
-		log.SetWatermark(at)
+		// The same fact, said twice: this stretch has now been covered
+		// properly, so the record can claim it and stop keeping the
+		// poll-dated approximations of what is in it.
+		log.Compact(from, until)
+		log.SetWatermark(until)
 		return nil
 	}
 }

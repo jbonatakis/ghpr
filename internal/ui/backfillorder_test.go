@@ -26,6 +26,16 @@ func deliver(m Model, window int, since time.Time, prs ...gh.PR) Model {
 	})
 }
 
+// finish answers every one of a window's searches, the first carrying the pull
+// requests and the rest empty, which is how a window actually completes.
+func finish(m Model, window int, since time.Time, prs ...gh.PR) Model {
+	m = deliver(m, window, since, prs...)
+	for i := 1; i < gh.BackfillShapes; i++ {
+		m = deliver(m, window, since)
+	}
+	return m
+}
+
 // topOfFeed is what the pane is showing at the very top — the newest line.
 func topOfFeed(m Model) string {
 	ev := m.feedEvents()
@@ -45,23 +55,20 @@ func TestOutOfOrderWindowsDoNotJumpTheFeed(t *testing.T) {
 	m := newSeeding(t, 24*time.Hour)
 
 	// Window 2 (oldest of the three used here) comes back first.
-	m = deliver(m, 2, since, windowPR(1, now.Add(-20*time.Hour)))
-	m = deliver(m, 2, since)
+	m = finish(m, 2, since, windowPR(1, now.Add(-20*time.Hour)))
 	if got := len(m.events); got != 0 {
 		t.Fatalf("an out-of-order window was filed early: %d events", got)
 	}
 
 	// Then window 1.
-	m = deliver(m, 1, since, windowPR(2, now.Add(-14*time.Hour)))
-	m = deliver(m, 1, since)
+	m = finish(m, 1, since, windowPR(2, now.Add(-14*time.Hour)))
 	if got := len(m.events); got != 0 {
 		t.Fatalf("window 1 was filed while window 0 was outstanding: %d events", got)
 	}
 
 	// Only when the newest window lands does anything appear — and everything
 	// held behind it goes in at once, underneath.
-	m = deliver(m, 0, since, windowPR(3, now.Add(-2*time.Hour)))
-	m = deliver(m, 0, since)
+	m = finish(m, 0, since, windowPR(3, now.Add(-2*time.Hour)))
 
 	top := topOfFeed(m)
 	if top != "ghpr started" {
@@ -84,8 +91,7 @@ func TestTheTopOfTheFeedSettlesWithTheFirstWindow(t *testing.T) {
 	since := now.Add(-24 * time.Hour)
 	m := newSeeding(t, 24*time.Hour)
 
-	m = deliver(m, 0, since, windowPR(10, now.Add(-90*time.Minute)))
-	m = deliver(m, 0, since)
+	m = finish(m, 0, since, windowPR(10, now.Add(-90*time.Minute)))
 
 	settled := topOfFeed(m)
 	if settled == "" {
@@ -95,8 +101,7 @@ func TestTheTopOfTheFeedSettlesWithTheFirstWindow(t *testing.T) {
 
 	// Every later window, in whatever order the pool finishes them.
 	for _, w := range []int{3, 1, 2} {
-		m = deliver(m, w, since, windowPR(20+w, now.Add(-time.Duration(4+w*4)*time.Hour)))
-		m = deliver(m, w, since)
+		m = finish(m, w, since, windowPR(20+w, now.Add(-time.Duration(4+w*4)*time.Hour)))
 
 		if got := topOfFeed(m); got != settled {
 			t.Errorf("window %d moved the top of the feed from %q to %q", w, settled, got)
@@ -119,12 +124,12 @@ func TestAFailedWindowDoesNotStrandTheOnesBehindIt(t *testing.T) {
 		since: since, window: 0, needs: gh.BackfillShapes,
 		err: &gh.TransientError{Detail: "502"},
 	}
-	m = m.applyBackfillChunk(fail)
-	m = m.applyBackfillChunk(fail)
+	for i := 0; i < gh.BackfillShapes; i++ {
+		m = m.applyBackfillChunk(fail)
+	}
 
 	// Window 1 answers normally and, with window 0 accounted for, goes in.
-	m = deliver(m, 1, since, windowPR(5, now.Add(-8*time.Hour)))
-	m = deliver(m, 1, since)
+	m = finish(m, 1, since, windowPR(5, now.Add(-8*time.Hour)))
 
 	if len(m.events) == 0 {
 		t.Fatal("a failed window stranded the ones behind it")
@@ -142,8 +147,7 @@ func TestWhatIsHeldAtTheEndIsStillFiled(t *testing.T) {
 	m := newSeeding(t, 24*time.Hour)
 
 	// Window 1 answers in full; window 0 never does, so nothing is released.
-	m = deliver(m, 1, since, windowPR(7, now.Add(-9*time.Hour)))
-	m = deliver(m, 1, since)
+	m = finish(m, 1, since, windowPR(7, now.Add(-9*time.Hour)))
 	if len(m.events) != 0 {
 		t.Fatal("window 1 was released while window 0 was outstanding")
 	}

@@ -229,29 +229,46 @@ func (l *Log) SetWatermark(at time.Time) error {
 	return os.Rename(tmp.Name(), path)
 }
 
-// Prepare reads the log, tidies it, and returns what is worth keeping.
+// Prepare reads the log, drops what has aged out of it, and returns the rest.
+// This is what stops the file growing without end. Called once at startup,
+// where a rewrite costs nothing anyone is waiting on.
+func (l *Log) Prepare(now time.Time) ([]gh.Event, int, error) {
+	return l.rewrite(func(e gh.Event) bool {
+		return e.At.Before(now.Add(-maxAge))
+	})
+}
+
+// Compact drops lines dated by a poll that fall inside a stretch a backfill has
+// now covered.
 //
-// Two things go. What has aged out, which is what stops the file growing
-// without end. And anything dated by a poll that falls on or after since,
-// because the backfill about to run covers that stretch and will report the
-// same activity with GitHub's own timestamps — leaving both would put one
-// comment on file twice, a second apart, and a run after that would show it
-// twice. This is why events remember how they were learned.
+// A poll dates an event by the moment it noticed, up to one interval after the
+// event happened; a backfill over the same stretch reports the real moment.
+// Both on file is one comment twice, seconds apart, and the pairs accumulate.
 //
-// Called once at startup, where a rewrite costs nothing anyone is waiting on.
-func (l *Log) Prepare(now, since time.Time) ([]gh.Event, int, error) {
+// Deliberately called after that backfill has succeeded rather than before it
+// runs. Dropping them up front would be betting on a reconstruction that had
+// not happened yet, and a failed one would take the only copy with it.
+func (l *Log) Compact(from, until time.Time) (int, error) {
+	if !until.After(from) {
+		return 0, nil
+	}
+	_, dropped, err := l.rewrite(func(e gh.Event) bool {
+		return e.Observed && !e.At.Before(from) && !e.At.After(until)
+	})
+	return dropped, err
+}
+
+// rewrite drops whatever discard says to, and rewrites the file if that came to
+// anything. It returns what is left either way.
+func (l *Log) rewrite(discard func(gh.Event) bool) ([]gh.Event, int, error) {
 	events, err := l.Load()
 	if err != nil && len(events) == 0 {
 		return nil, 0, err
 	}
-	cutoff := now.Add(-maxAge)
 	kept := make([]gh.Event, 0, len(events))
 	for _, e := range events {
-		if e.At.Before(cutoff) {
+		if discard(e) {
 			continue
-		}
-		if e.Observed && !e.At.Before(since) {
-			continue // about to be re-reported, better dated
 		}
 		kept = append(kept, e)
 	}

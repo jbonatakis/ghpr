@@ -165,7 +165,7 @@ func TestBackfillSearchesCoverEverythingYouTouch(t *testing.T) {
 	since := now.Add(-30 * time.Minute) // one window's worth, so two searches
 	got := BackfillSearches("", since, now)
 
-	if len(got) != 2 {
+	if len(got) != BackfillShapes {
 		t.Fatalf("got %d searches: %+v", len(got), got)
 	}
 	var queries []string
@@ -173,9 +173,11 @@ func TestBackfillSearchesCoverEverythingYouTouch(t *testing.T) {
 		queries = append(queries, p.Query)
 	}
 	joined := strings.Join(queries, " || ")
-	// involves:@me covers authoring, commenting, assignment and mentions, but
-	// not a review merely requested and not yet acted on.
-	for _, want := range []string{"involves:@me", "review-requested:@me"} {
+	// involves covers authoring, commenting, assignment and mentions; not a
+	// review merely requested, and — the one that cost real activity — not
+	// having reviewed at all, which review-requested stops matching the moment
+	// the review is submitted.
+	for _, want := range []string{"involves:@me", "review-requested:@me", "reviewed-by:@me"} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("nothing searches %s: %q", want, queries)
 		}

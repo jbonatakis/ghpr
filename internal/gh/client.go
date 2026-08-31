@@ -108,13 +108,24 @@ func BackfillSearches(extra string, since, now time.Time) []BackfillPlan {
 	return out
 }
 
-// backfillShapes are the two searches run over every window. GitHub cannot
-// express their union in a single query.
-var backfillShapes = []string{"involves:@me ", "review-requested:@me "}
+// backfillShapes are the searches run over every window. GitHub cannot express
+// their union in a single query, and each covers a gap the others leave.
+//
+// involves is author OR assignee OR mentions OR commenter — reviewing is not on
+// that list. review-requested only matches while a review is still outstanding;
+// submitting one removes you from it. So a pull request you reviewed and did
+// not comment on matched neither, and everything that happened on it afterwards
+// — the commits pushed in answer to your review, most of all — was invisible.
+// reviewed-by is the qualifier that covers it.
+var backfillShapes = []string{
+	"involves:@me ",
+	"review-requested:@me ",
+	"reviewed-by:@me ",
+}
 
 // BackfillShapes is how many searches cover each window, so a caller can tell
 // when a window has been answered in full.
-const BackfillShapes = 2
+const BackfillShapes = 3
 
 // BackfillPlan is one search the backfill will run.
 //

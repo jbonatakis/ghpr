@@ -66,8 +66,7 @@ func TestTheSavedFeedLandsUnderTheSearches(t *testing.T) {
 
 	// Only once every search window has reported does any of it appear.
 	for w := 0; w < last; w++ {
-		m = deliver(m, w, watermark, windowPR(w+1, now.Add(-time.Duration(w+1)*time.Minute)))
-		m = deliver(m, w, watermark)
+		m = finish(m, w, watermark, windowPR(w+1, now.Add(-time.Duration(w+1)*time.Minute)))
 	}
 
 	if len(m.events) == 0 {

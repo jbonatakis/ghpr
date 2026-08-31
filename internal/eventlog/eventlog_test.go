@@ -181,7 +181,7 @@ func TestPrepareDropsWhatHasAgedOut(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	kept, dropped, err := l.Prepare(now, now)
+	kept, dropped, err := l.Prepare(now)
 	if err != nil {
 		t.Fatalf("prepare: %v", err)
 	}
@@ -203,7 +203,7 @@ func TestPrepareRewritesNothingWhenNothingHasAgedOut(t *testing.T) {
 	if err := l.Append([]gh.Event{ev("recent", now.Add(-time.Hour))}); err != nil {
 		t.Fatal(err)
 	}
-	if _, dropped, err := l.Prepare(now, now); err != nil || dropped != 0 {
+	if _, dropped, err := l.Prepare(now); err != nil || dropped != 0 {
 		t.Errorf("prepare dropped %d (%v), want nothing", dropped, err)
 	}
 }
@@ -259,7 +259,7 @@ func TestLoadReturnsOldestFirst(t *testing.T) {
 // One comment can reach the log twice: once dated by the poll that noticed it,
 // once dated truly by a later backfill over the same stretch. Left alone they
 // read as two comments seconds apart, and the file fills with the pairs.
-func TestPrepareDropsPollDatedLinesTheBackfillWillRedo(t *testing.T) {
+func TestCompactDropsPollDatedLinesTheBackfillHasRedone(t *testing.T) {
 	l := scratch(t)
 	now := time.Now().UTC().Truncate(time.Second)
 	since := now.Add(-time.Hour)
@@ -279,14 +279,15 @@ func TestPrepareDropsPollDatedLinesTheBackfillWillRedo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	kept, dropped, err := l.Prepare(now, since)
+	dropped, err := l.Compact(since, now)
 	if err != nil {
-		t.Fatalf("prepare: %v", err)
+		t.Fatalf("compact: %v", err)
 	}
 	if dropped != 1 {
 		t.Errorf("dropped %d lines, want the one poll-dated line inside the gap", dropped)
 	}
 
+	kept, _ := l.Load()
 	var texts []string
 	for _, e := range kept {
 		texts = append(texts, e.Text)
@@ -328,16 +329,12 @@ func TestOneCommentEndsUpOnFileOnce(t *testing.T) {
 	// Run 1 notices it by polling, twenty seconds late.
 	l.Append([]gh.Event{comment(trueTime.Add(20*time.Second), true)})
 
-	// Run 2 starts, and its backfill will cover everything since run 1 began.
-	kept, _, err := l.Prepare(now.Add(-2*time.Hour), trueTime.Add(-time.Minute))
-	if err != nil {
+	// Run 2's backfill covers that stretch and reports the real moment...
+	l.Append([]gh.Event{comment(trueTime, false)})
+	// ...and only then does the approximate copy go.
+	if _, err := l.Compact(trueTime.Add(-time.Minute), now); err != nil {
 		t.Fatal(err)
 	}
-	if len(kept) != 0 {
-		t.Fatalf("the poll-dated line survived into a run that will redo it: %+v", kept)
-	}
-	// ...and reports it at the moment it actually happened.
-	l.Append([]gh.Event{comment(trueTime, false)})
 
 	// Run 3 loads the log.
 	got, _ := l.Load()
@@ -346,5 +343,74 @@ func TestOneCommentEndsUpOnFileOnce(t *testing.T) {
 	}
 	if !got[0].At.Equal(trueTime) {
 		t.Errorf("the surviving line is dated %s, want the real moment %s", got[0].At, trueTime)
+	}
+}
+
+// Compaction is a bet on a reconstruction that has already happened. Doing it
+// up front would stake the only copy of an event on a backfill that had not
+// run yet, and a failed one would take it with it.
+func TestNothingIsDroppedBeforeTheBackfillHasCoveredIt(t *testing.T) {
+	l := scratch(t)
+	now := time.Now().UTC().Truncate(time.Second)
+
+	seen := ev("noticed by a poll", now.Add(-30*time.Minute))
+	seen.Observed = true
+	if err := l.Append([]gh.Event{seen}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Startup only ages the file out; it knows nothing yet about what the
+	// backfill will manage to gather.
+	kept, _, err := l.Prepare(now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(kept) != 1 {
+		t.Fatalf("startup dropped a line before anything had replaced it: %+v", kept)
+	}
+	if onDisk, _ := l.Load(); len(onDisk) != 1 {
+		t.Fatalf("startup rewrote the file without a replacement in hand: %+v", onDisk)
+	}
+}
+
+// And a stretch nothing covered keeps its poll-dated lines, because nothing is
+// coming to replace them.
+func TestCompactLeavesWhatIsOutsideTheCoveredStretch(t *testing.T) {
+	l := scratch(t)
+	now := time.Now().UTC().Truncate(time.Second)
+
+	older := ev("well before the gap", now.Add(-5*time.Hour))
+	older.Observed = true
+	inside := ev("inside the gap", now.Add(-10*time.Minute))
+	inside.Observed = true
+	if err := l.Append([]gh.Event{older, inside}); err != nil {
+		t.Fatal(err)
+	}
+
+	dropped, err := l.Compact(now.Add(-time.Hour), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dropped != 1 {
+		t.Errorf("dropped %d, want only the line inside the covered stretch", dropped)
+	}
+	got, _ := l.Load()
+	if len(got) != 1 || got[0].Text != "well before the gap" {
+		t.Errorf("kept %+v, want the line nothing is going to replace", got)
+	}
+}
+
+func TestCompactOverNoStretchDoesNothing(t *testing.T) {
+	l := scratch(t)
+	now := time.Now().UTC().Truncate(time.Second)
+	e := ev("x", now.Add(-time.Minute))
+	e.Observed = true
+	l.Append([]gh.Event{e})
+
+	if dropped, err := l.Compact(now, now); err != nil || dropped != 0 {
+		t.Errorf("compact over an empty stretch dropped %d (%v)", dropped, err)
+	}
+	if got, _ := l.Load(); len(got) != 1 {
+		t.Errorf("the log lost a line to a compaction of nothing: %+v", got)
 	}
 }

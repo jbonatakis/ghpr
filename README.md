@@ -295,9 +295,11 @@ noticed by *polling* is dated by the poll that saw it, up to one interval later
 than it happened, while a backfill over the same stretch reports the real
 moment. Both on file would be one comment appearing twice, seconds apart, and
 the pairs would pile up run after run. So every line records how it was learned,
-and the poll-dated copy is dropped exactly when the backfill is about to
-re-report that stretch properly. Nothing is lost: poll-dated lines outside the
-gap are kept, because nothing is going to replace them.
+and the poll-dated copy is dropped once a backfill has re-reported that stretch
+properly — after it has succeeded, never before it runs, because dropping them
+up front would stake the only copy on a reconstruction that had not happened
+yet. Poll-dated lines outside the covered stretch are kept, since nothing is
+coming to replace them.
 
 Only the feed is kept. The pull request list is live state, and a dashboard
 showing yesterday's statuses would be worse than one that takes a moment.
@@ -371,10 +373,10 @@ at launch and never again, so the thirty-second poll stays at 2 points while
 the backfill gets to see an actual month:
 
 ```
-is:pr archived:false involves:@me          updated:>=2026-08-28T07:00:00+00:00
-is:pr archived:false review-requested:@me  updated:>=2026-08-28T07:00:00+00:00
-is:pr archived:false involves:@me          updated:2026-08-28T01:00..2026-08-28T07:00
-is:pr archived:false review-requested:@me  updated:2026-08-28T01:00..2026-08-28T07:00
+is:pr archived:false involves:@me          updated:>=2026-08-28T11:30:00+00:00
+is:pr archived:false review-requested:@me  updated:>=2026-08-28T11:30:00+00:00
+is:pr archived:false reviewed-by:@me       updated:>=2026-08-28T11:30:00+00:00
+is:pr archived:false involves:@me          updated:2026-08-28T10:00..2026-08-28T11:30
 …
 ```
 
@@ -382,10 +384,15 @@ is:pr archived:false review-requested:@me  updated:2026-08-28T01:00..2026-08-28T
   mode by design — switching mode does not un-happen what it saw — so filling
   it from whichever one happens to be selected contradicts the thing it is. A
   dashboard opened on `authored` would reconstruct a morning with everything
-  you reviewed left out of it. Two searches because GitHub cannot express the
-  union: `involves:@me` covers authoring, commenting, assignment and mentions,
-  but not a review merely requested of you and not yet acted on. They overlap,
-  and anything found by both is seeded once.
+  you reviewed left out of it. Three searches, because GitHub cannot express
+  the union and the gaps between its qualifiers are not obvious. `involves:@me`
+  is author OR assignee OR mentions OR commenter — reviewing is **not** on that
+  list. `review-requested:@me` matches only while a review is still
+  outstanding; submitting it removes you. So a pull request you reviewed and
+  did not comment on fell between the two, and everything that happened on it
+  afterwards — the commits pushed in answer to your review, above all — was
+  invisible. `reviewed-by:@me` is the qualifier that covers it. They overlap,
+  and anything found by more than one is seeded once.
 - **Pull requests that already finished.** Neither search says `is:open`, so
   what was merged or closed inside the window comes back too, with `✔ merged`
   and `× closed` lines of its own — for anyone who ships, that is most of the
