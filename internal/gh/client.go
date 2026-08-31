@@ -127,6 +127,19 @@ var backfillShapes = []string{
 // when a window has been answered in full.
 const BackfillShapes = 3
 
+// BackfillScope names what the searches reach, so a record of having covered
+// some stretch of time can say what it covered it *with*.
+//
+// Coverage is a claim about a span and a scope together, and only the span was
+// ever written down. When reviewed-by:@me was added the searches began reaching
+// pull requests they had never reached before, but every stretch already marked
+// as covered stayed marked — so the one thing that would have gone and found
+// them was skipped, and a wider -seed changed nothing. Recording the scope
+// alongside makes a claim expire when it stops being true.
+func BackfillScope(extra string) string {
+	return strings.Join(backfillShapes, "") + "|" + strings.TrimSpace(extra)
+}
+
 // BackfillPlan is one search the backfill will run.
 //
 // Window is its place in the sequence, counting back from the present. A caller

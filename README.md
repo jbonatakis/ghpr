@@ -336,6 +336,23 @@ otherwise look identical: `nothing in the last 720h` for a genuinely quiet
 window, `could not look back over the last 720h` when the searches failed, and
 the plain `watching for changes…` when no backfill was asked for at all.
 
+#### What `-seed` actually promises
+
+`-seed 48h` says **the feed should reach back 48 hours** — not that ghpr will
+search 48 hours. Those differ once there is a saved record, and the difference
+is the point: if the record already covers most of that span, the searches only
+fetch the gap and the rest is read off disk. Same 48 hours in the feed, a
+fraction of the work.
+
+That only holds while the coverage claim is true, so it is recorded with the
+scope that made it. Widen the searches — as adding `reviewed-by:@me` just did —
+and every earlier claim lapses, because those stretches were never searched the
+new way. The next run goes and looks properly rather than trusting a mark that
+has stopped meaning what it said.
+
+To force a full search regardless of what is on disk, `-remember=false` ignores
+the record and the watermark together.
+
 `-seed` bounds the *searching*, not the feed. Whatever the saved record already
 holds is loaded whole — there is no reason to throw away history you already
 have to make it fit a window that only ever governed how much to ask GitHub

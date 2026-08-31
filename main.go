@@ -111,7 +111,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, "ghpr: not keeping activity between runs:", err)
 		} else {
 			now := time.Now()
-			watermark := log.Watermark()
+			watermark := log.Watermark(gh.BackfillScope(*extra))
 			cached, dropped, err := log.Prepare(now)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "ghpr: could not tidy the activity log:", err)

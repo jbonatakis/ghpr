@@ -1038,12 +1038,14 @@ func (m Model) saveWatermark() tea.Cmd {
 		return nil
 	}
 	from, until := m.backfillSince(), m.startedAt
+	scope := gh.BackfillScope(m.cfg.Extra)
 	return func() tea.Msg {
 		// The same fact, said twice: this stretch has now been covered
 		// properly, so the record can claim it and stop keeping the
-		// poll-dated approximations of what is in it.
+		// poll-dated approximations of what is in it. The scope goes with the
+		// claim, because it is only true of the searches that made it.
 		log.Compact(from, until)
-		log.SetWatermark(until)
+		log.SetWatermark(until, scope)
 		return nil
 	}
 }

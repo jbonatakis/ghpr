@@ -176,21 +176,37 @@ func (l *Log) Append(events []gh.Event) error {
 	return w.Flush()
 }
 
-// Watermark is the point up to which the feed is known to be complete.
+// coverage is what a finished backfill leaves behind: how far it reached, and
+// what it was looking for when it did.
+type coverage struct {
+	CoveredUntil time.Time `json:"coveredUntil"`
+	Scope        string    `json:"scope,omitempty"`
+}
+
+// Watermark is the point up to which the feed is known to be complete, for the
+// given scope.
 //
 // It is recorded separately rather than inferred from the newest event, because
 // those are different claims: a quiet hour before the last run ended leaves the
 // newest event an hour old, and resuming from there would skip over an hour
 // nobody had actually looked at.
-func (l *Log) Watermark() time.Time {
+//
+// A claim made with a different scope is no claim at all. Widening the searches
+// means stretches marked as covered were never searched the way they now would
+// be, and honouring the old mark would skip past exactly the pull requests the
+// widening was meant to reach — leaving even an explicit -seed with nothing to
+// do. Rather than trusting it, the coverage lapses and the next run goes and
+// looks properly.
+func (l *Log) Watermark(scope string) time.Time {
 	raw, err := os.ReadFile(filepath.Join(l.dir, watermarkFile))
 	if err != nil {
 		return time.Time{}
 	}
-	var doc struct {
-		CoveredUntil time.Time `json:"coveredUntil"`
-	}
+	var doc coverage
 	if json.Unmarshal(raw, &doc) != nil {
+		return time.Time{}
+	}
+	if doc.Scope != scope {
 		return time.Time{}
 	}
 	return doc.CoveredUntil
@@ -200,13 +216,11 @@ func (l *Log) Watermark() time.Time {
 // finished may move it: a poll sees one search's worth of pull requests, which
 // is narrower than the feed's scope, so claiming its coverage would leave holes
 // the next run would never think to fill.
-func (l *Log) SetWatermark(at time.Time) error {
+func (l *Log) SetWatermark(at time.Time, scope string) error {
 	if err := os.MkdirAll(l.dir, 0o700); err != nil {
 		return err
 	}
-	raw, err := json.Marshal(struct {
-		CoveredUntil time.Time `json:"coveredUntil"`
-	}{at})
+	raw, err := json.Marshal(coverage{CoveredUntil: at, Scope: scope})
 	if err != nil {
 		return err
 	}

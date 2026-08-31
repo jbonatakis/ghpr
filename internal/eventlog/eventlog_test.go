@@ -153,20 +153,22 @@ func TestTheWatermarkIsNotTheNewestEvent(t *testing.T) {
 	l := scratch(t)
 	now := time.Now().UTC().Truncate(time.Second)
 
-	if got := l.Watermark(); !got.IsZero() {
+	const scope = "involves review-requested reviewed-by|"
+
+	if got := l.Watermark(scope); !got.IsZero() {
 		t.Errorf("a fresh log claims coverage up to %s", got)
 	}
 	if err := l.Append([]gh.Event{ev("old", now.Add(-time.Hour))}); err != nil {
 		t.Fatal(err)
 	}
-	if got := l.Watermark(); !got.IsZero() {
+	if got := l.Watermark(scope); !got.IsZero() {
 		t.Error("appending an event moved the watermark")
 	}
 
-	if err := l.SetWatermark(now); err != nil {
+	if err := l.SetWatermark(now, scope); err != nil {
 		t.Fatalf("set watermark: %v", err)
 	}
-	if got := l.Watermark(); !got.Equal(now) {
+	if got := l.Watermark(scope); !got.Equal(now) {
 		t.Errorf("watermark = %s, want %s", got, now)
 	}
 }
@@ -215,7 +217,7 @@ func TestTheLogIsPrivate(t *testing.T) {
 	if err := l.Append([]gh.Event{ev("x", time.Now())}); err != nil {
 		t.Fatal(err)
 	}
-	if err := l.SetWatermark(time.Now()); err != nil {
+	if err := l.SetWatermark(time.Now(), "scope"); err != nil {
 		t.Fatal(err)
 	}
 	for _, name := range []string{eventsFile, watermarkFile} {
@@ -412,5 +414,67 @@ func TestCompactOverNoStretchDoesNothing(t *testing.T) {
 	}
 	if got, _ := l.Load(); len(got) != 1 {
 		t.Errorf("the log lost a line to a compaction of nothing: %+v", got)
+	}
+}
+
+// Coverage is a claim about a span and a scope together. Widening the searches
+// means every stretch already marked as covered was never searched the way it
+// now would be, so honouring the old mark would skip past exactly the pull
+// requests the widening was meant to reach — and leave even an explicit -seed
+// with nothing to do.
+func TestCoverageLapsesWhenTheSearchesWiden(t *testing.T) {
+	l := scratch(t)
+	now := time.Now().UTC().Truncate(time.Second)
+
+	const narrow = "involves review-requested|"
+	const wider = "involves review-requested reviewed-by|"
+
+	if err := l.SetWatermark(now, narrow); err != nil {
+		t.Fatal(err)
+	}
+	if got := l.Watermark(narrow); !got.Equal(now) {
+		t.Fatalf("the claim does not hold for the scope that made it: %s", got)
+	}
+	if got := l.Watermark(wider); !got.IsZero() {
+		t.Errorf("a claim made by narrower searches was honoured for wider ones (%s); "+
+			"the stretch would never be searched the new way", got)
+	}
+
+	// And once the wider searches have covered it, the claim is theirs.
+	if err := l.SetWatermark(now, wider); err != nil {
+		t.Fatal(err)
+	}
+	if got := l.Watermark(wider); !got.Equal(now) {
+		t.Errorf("watermark = %s, want %s", got, now)
+	}
+}
+
+// The extra qualifiers a user passes narrow the searches too, so they belong
+// in the scope.
+func TestCoverageLapsesWhenTheQueryChanges(t *testing.T) {
+	l := scratch(t)
+	now := time.Now().UTC().Truncate(time.Second)
+
+	if err := l.SetWatermark(now, "shapes|org:acme"); err != nil {
+		t.Fatal(err)
+	}
+	if got := l.Watermark("shapes|"); !got.IsZero() {
+		t.Errorf("coverage gathered under -query org:acme was claimed for a wider run: %s", got)
+	}
+}
+
+// A log written before scopes were recorded claims nothing, which sends the
+// next run to look properly rather than trusting a mark it cannot check.
+func TestAnUnscopedClaimIsNotTrusted(t *testing.T) {
+	l := scratch(t)
+	if err := os.MkdirAll(l.dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	old := `{"coveredUntil":"2026-08-30T10:00:00Z"}`
+	if err := os.WriteFile(filepath.Join(l.dir, watermarkFile), []byte(old), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := l.Watermark("involves review-requested reviewed-by|"); !got.IsZero() {
+		t.Errorf("a claim from before scopes were recorded was honoured: %s", got)
 	}
 }

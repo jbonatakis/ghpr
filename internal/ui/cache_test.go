@@ -174,7 +174,7 @@ func TestOnlyASuccessfulBackfillClaimsCoverage(t *testing.T) {
 		t.Fatal("a clean run offered to claim no coverage")
 	}
 	cmd()
-	if got := clean.cfg.Log.Watermark(); !got.Equal(clean.startedAt) {
+	if got := clean.cfg.Log.Watermark(gh.BackfillScope("")); !got.Equal(clean.startedAt) {
 		t.Errorf("claimed coverage up to %s, want the moment this run began (%s)",
 			got, clean.startedAt)
 	}
