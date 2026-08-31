@@ -125,7 +125,7 @@ func TestWhySeedExplainsAQuietWindow(t *testing.T) {
 
 	for _, want := range []string{
 		"pull requests",
-		"seed window 1h —",
+		"-seed 1h —",
 		"0 events seeded, from 0 of",
 		"Nothing at all landed in the window",
 	} {

@@ -212,11 +212,19 @@ func explainSeed(cfg ui.Config) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
 
+	now := time.Now()
 	window := cfg.Seed
 	if window <= 0 {
 		window = time.Hour
 	}
-	since := time.Now().Add(-window)
+	// The same clamp a real launch applies. Reporting the whole window instead
+	// would describe a run nobody is about to make: with a saved record behind
+	// it, the searches cover the gap and the rest is read off disk, and the
+	// difference between those two pictures is most of the output below.
+	since := now.Add(-window)
+	if cfg.Watermark.After(since) {
+		since = cfg.Watermark
+	}
 
 	var (
 		res  gh.Result
@@ -227,7 +235,7 @@ func explainSeed(cfg ui.Config) error {
 		foundBy  = map[string][]gh.Shape{}
 		perShape = map[gh.Shape]int{}
 	)
-	plans := gh.BackfillSearches(cfg.Extra, since, time.Now(), cfg.Watch)
+	plans := gh.BackfillSearches(cfg.Extra, since, now, cfg.Watch)
 	for _, plan := range plans {
 		found, err := cfg.Client.Backfill(ctx, plan.Query, cfg.Max)
 		if err != nil {
@@ -271,8 +279,17 @@ func explainSeed(cfg ui.Config) error {
 	for _, plan := range plans {
 		fmt.Printf("    %s\n", plan.Query)
 	}
-	fmt.Printf("seed window %s — nothing before %s can be reached\n",
-		tidy(window), since.Local().Format("2006-01-02 15:04"))
+	fmt.Printf("-seed %s — the feed should reach back to %s\n",
+		tidy(window), now.Add(-window).Local().Format("2006-01-02 15:04"))
+	if cfg.Watermark.IsZero() {
+		fmt.Println("nothing is on record as covered, so the searches cover all of it")
+	} else {
+		fmt.Printf("the record already covers up to %s, so the searches only cover\n"+
+			"the %s since — everything older comes off disk (%d lines saved)\n",
+			cfg.Watermark.Local().Format("2006-01-02 15:04"),
+			tidy(now.Sub(since).Round(time.Minute)), len(cfg.Cached))
+		fmt.Println("run with -remember=false to see what a first launch would search")
+	}
 	fmt.Println()
 
 	when := func(at time.Time) string {
@@ -283,7 +300,7 @@ func explainSeed(cfg ui.Config) error {
 		if !at.Before(since) {
 			mark = "IN     "
 		}
-		return fmt.Sprintf("%6s  %s  %s", age(res.FetchedAt.Sub(at)), mark,
+		return fmt.Sprintf("%6s  %s  %s", age(now.Sub(at)), mark,
 			at.Local().Format("2006-01-02 15:04"))
 	}
 
