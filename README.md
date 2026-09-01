@@ -212,6 +212,16 @@ current mode, and the hide filters do not narrow it. Switching mode or
 dismissing a pull request changes what you are working on, not what already
 happened.
 
+That holds while ghpr is running, not just at launch. Each interval it makes
+two passes: the dashboard's own, scoped to the mode on screen, and a sweep of
+everything the feed watches — the same `involved,requested,reviewed` shapes the
+backfill uses, bounded by `updated:>=` the last sweep so each one usually comes
+back with nothing. Without that second pass, watching somebody push to a pull
+request you review showed nothing at all in `authored` mode, because `author:@me`
+never looked at it, and the commits appeared only on the next launch when the
+backfill went and found them. The sweep leaves whatever is on screen to the
+dashboard's own pass, so one comment is never reported twice.
+
 Reviews name the exact reviewer, pushes name the committer, comments name the
 author, and a merge or a close names whoever did it — GitHub reports the merger
 outright, and a plain close is read off the last close on the timeline. Checks

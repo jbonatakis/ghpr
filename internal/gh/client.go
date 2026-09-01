@@ -177,6 +177,30 @@ func ShapeNames(shapes []Shape) string {
 	return strings.Join(names, ",")
 }
 
+// FeedPollSearches keep the feed current between launches.
+//
+// The dashboard's own poll is scoped to whichever mode is on screen, and the
+// feed is not: watching someone push to a pull request you review produced
+// nothing at all in authored mode, because author:@me never looked at it. The
+// activity only appeared on the next launch, when the backfill — which does
+// span every shape — went and found it.
+//
+// These are the same shapes as the backfill over the cheap polling query, and
+// bounded by updated:>= the last time we looked, so each one usually comes back
+// with nothing at all. That bound is what makes running three of them every
+// interval affordable.
+func FeedPollSearches(extra string, since time.Time, shapes []Shape) []string {
+	const iso = "2006-01-02T15:04:05+00:00"
+	extra = strings.TrimSpace(extra)
+	out := make([]string, 0, len(shapes))
+	for _, shape := range shapes {
+		q := "is:open is:pr archived:false " + shape.qualifier() +
+			"updated:>=" + since.UTC().Format(iso) + " " + extra
+		out = append(out, strings.TrimSpace(q))
+	}
+	return out
+}
+
 // BackfillScope names what the searches reach, so a record of having covered
 // some stretch of time can say what it covered it *with*.
 //

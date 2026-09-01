@@ -212,6 +212,11 @@ type Model struct {
 	// unsaved is what has been recorded but not yet written to disk.
 	unsaved []gh.Event
 
+	// feedSeen is the last state of everything the feed watches, which is wider
+	// than the list on screen. lastFeedPoll bounds the next sweep.
+	feedSeen     map[string]gh.PR
+	lastFeedPoll time.Time
+
 	// absent tracks pull requests that dropped out of the search but have not
 	// been accounted for. They stay on screen and are looked up directly, so a
 	// page-boundary artifact never shows up as "merged or closed".
@@ -294,6 +299,8 @@ func New(cfg Config) Model {
 		backfillCh:         backfillChannel(cfg.Seed),
 		backfillStop:       make(chan struct{}),
 		backfillSeen:       map[string]bool{},
+		feedSeen:           map[string]gh.PR{},
+		lastFeedPoll:       now,
 		backfillHeld:       map[int][]gh.PR{},
 		backfillCachedHeld: map[int][]gh.Event{},
 		backfillAnswers:    map[int]int{},
@@ -575,6 +582,127 @@ func (m Model) awaitBackfill() tea.Cmd {
 	}
 }
 
+// feedPollDoneMsg carries a sweep of everything the feed watches, as opposed to
+// whatever the dashboard happens to be showing.
+type feedPollDoneMsg struct {
+	seq    int
+	prs    []gh.PR
+	viewer string
+	at     time.Time
+	err    error
+}
+
+// feedPollCmd looks for changes anywhere in the feed's scope.
+//
+// The dashboard's poll only ever looks at the mode on screen, so watching
+// somebody push to a pull request you review produced nothing in authored mode
+// — author:@me never looked at it — and the activity turned up only on the next
+// launch, when the backfill went and found it. This is the half that was
+// missing: the same shapes the backfill uses, run at the polling interval.
+//
+// Bounded by updated:>= the last sweep, so each search usually returns nothing
+// and the three of them together cost little more than the one they join.
+func (m Model) feedPollCmd(seq int, since time.Time) tea.Cmd {
+	cfg := m.cfg
+	if len(cfg.Watch) == 0 {
+		return nil
+	}
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+		defer cancel()
+
+		var (
+			out    []gh.PR
+			viewer string
+			seen   = map[string]bool{}
+			first  error
+		)
+		at := time.Now()
+		for _, q := range gh.FeedPollSearches(cfg.Extra, since, cfg.Watch) {
+			res, err := cfg.Client.Fetch(ctx, q, cfg.Max)
+			if err != nil {
+				if first == nil {
+					first = err
+				}
+				continue
+			}
+			if viewer == "" {
+				viewer = res.Viewer
+			}
+			for _, p := range res.PRs {
+				if seen[p.Key()] {
+					continue
+				}
+				seen[p.Key()] = true
+				out = append(out, p)
+			}
+		}
+		if len(out) == 0 && first != nil {
+			return feedPollDoneMsg{seq: seq, err: first}
+		}
+		return feedPollDoneMsg{seq: seq, prs: out, viewer: viewer, at: at}
+	}
+}
+
+// applyFeedPoll reports what changed outside the list.
+//
+// Only outside it: the dashboard's own poll already diffs everything on screen,
+// and reporting the same comment from both would put it in the feed twice.
+func (m Model) applyFeedPoll(msg feedPollDoneMsg) (Model, tea.Cmd) {
+	if msg.seq != m.fetchSeq {
+		return m, nil // the search this answers has been superseded
+	}
+	if msg.err != nil {
+		// Quietly: the dashboard's own poll is unaffected, and the next sweep
+		// covers the same ground because the watermark has not moved.
+		return m, nil
+	}
+	// The bound this sweep was asked for, captured before it moves on.
+	since := m.lastFeedPoll
+	m.lastFeedPoll = msg.at
+
+	onScreen := make(map[string]bool, len(m.prs))
+	for _, p := range m.prs {
+		onScreen[p.Key()] = true
+	}
+
+	// Non-empty even when it holds nothing: a nil prev is how Diff is told this
+	// is a first load, and it answers that with silence. Here it means only
+	// that nothing being compared was seen before.
+	prev, next := []gh.PR{}, []gh.PR{}
+	for _, p := range msg.prs {
+		key := p.Key()
+		was, known := m.feedSeen[key]
+		m.feedSeen[key] = p
+		if onScreen[key] {
+			continue // the list's own poll has this one
+		}
+		if known {
+			prev, next = append(prev, was), append(next, p)
+			continue
+		}
+		// Never seen before, which for a sweep bounded by updated:>= says
+		// nothing about age: most first sightings are old pull requests that
+		// simply changed for the first time since ghpr started. Only one
+		// created inside this sweep's own window is news — anything older was
+		// the backfill's to report, and reporting it here would say it twice.
+		if !p.CreatedAt.Before(since) {
+			next = append(next, p)
+		}
+	}
+
+	// PrevComplete stays false: this sweep is bounded by updated:>=, so a pull
+	// request absent from it has not changed rather than left, and one present
+	// for the first time may simply never have changed before now. Neither is
+	// an arrival.
+	m.record(gh.Diff(prev, next, gh.DiffOpts{
+		Now:    msg.at,
+		Mode:   m.cfg.Mode,
+		Viewer: msg.viewer,
+	}))
+	return m, m.takeSaved()
+}
+
 type tickMsg time.Time
 
 func tickCmd() tea.Cmd {
@@ -582,7 +710,11 @@ func tickCmd() tea.Cmd {
 }
 
 func (m Model) Init() tea.Cmd {
-	cmds := []tea.Cmd{m.fetchCmdSeq(m.fetchSeq), tickCmd(), m.spin.Tick}
+	cmds := []tea.Cmd{
+		m.fetchCmdSeq(m.fetchSeq),
+		m.feedPollCmd(m.fetchSeq, m.lastFeedPoll),
+		tickCmd(), m.spin.Tick,
+	}
 	if m.cfg.Seed > 0 {
 		// One command drives the searches, another waits on their answers; the
 		// second re-arms itself for as long as they keep coming.
@@ -736,7 +868,9 @@ func (m Model) applyBackfill(msg backfillDoneMsg) Model {
 func (m *Model) startFetch() tea.Cmd {
 	m.fetchSeq++
 	m.loading = true
-	return m.fetchCmdSeq(m.fetchSeq)
+	// The feed's sweep goes with it: they answer different questions about the
+	// same moment, and running them apart would only stagger the answers.
+	return tea.Batch(m.fetchCmdSeq(m.fetchSeq), m.feedPollCmd(m.fetchSeq, m.lastFeedPoll))
 }
 
 // fetchCmdSeq polls the API once, off the UI goroutine, stamped with seq.
@@ -790,6 +924,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case verifyDoneMsg:
 		next := m.applyVerify(msg)
 		return next, next.takeSaved()
+
+	case feedPollDoneMsg:
+		return m.applyFeedPoll(msg)
 
 	case backfillChunkMsg:
 		// Re-arm: there will be another until the channel closes.
