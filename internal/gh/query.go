@@ -16,6 +16,10 @@ query($q: String!, $n: Int!, $after: String) {
         url
         isDraft
         bodyText
+        state
+        mergedAt
+        closedAt
+        mergedBy { login }
         createdAt
         updatedAt
         additions

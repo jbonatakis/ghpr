@@ -222,6 +222,14 @@ never looked at it, and the commits appeared only on the next launch when the
 backfill went and found them. The sweep leaves whatever is on screen to the
 dashboard's own pass, so one comment is never reported twice.
 
+The sweep is deliberately **not** `is:open`. A merge is the one change that
+removes a pull request from an open-only search, so asking that way guarantees
+it can never watch the thing most worth reporting — it would simply see the
+pull request disappear. The dashboard's own poll *is* `is:open` and handles that
+differently: a pull request vanishing from it is not evidence of anything, so
+its fate is confirmed with a direct look-up rather than assumed. See
+[Why it never guesses that a PR opened or closed](#why-it-never-guesses-that-a-pr-opened-or-closed).
+
 Reviews name the exact reviewer, pushes name the committer, comments name the
 author, and a merge or a close names whoever did it — GitHub reports the merger
 outright, and a plain close is read off the last close on the timeline. Checks

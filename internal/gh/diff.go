@@ -186,6 +186,16 @@ func Diff(prev, next []PR, opts DiffOpts) []Event {
 				// know was complete: it has just entered the watched set.
 				add(p, EventArrived, p.Author, "%s", arrivalText(opts.Mode))
 			}
+			// A pull request first seen already finished. The ending is the
+			// part worth reporting, and it can arrive this way: a sweep that
+			// is not is:open returns one that merged before anything here had
+			// occasion to look at it.
+			switch p.State {
+			case StateMerged:
+				add(p, EventMerged, p.FinishedBy, "merged")
+			case StateClosed:
+				add(p, EventClosed, p.FinishedBy, "closed")
+			}
 			// Anything else merely surfaced in our view; that is not activity.
 			continue
 		}
@@ -226,6 +236,18 @@ func Diff(prev, next []PR, opts DiffOpts) []Event {
 		}
 		if o.HeadOID != "" && p.HeadOID != "" && o.HeadOID != p.HeadOID {
 			add(p, EventPush, p.PushedBy, "new commits")
+		}
+		// Finishing. Only a search that is not is:open can watch this happen,
+		// so the dashboard's own poll never reaches it — there, a merge shows
+		// up as the pull request vanishing, and Vanished and Client.States
+		// settle what became of it.
+		if o.State != StateMerged && o.State != StateClosed {
+			switch p.State {
+			case StateMerged:
+				add(p, EventMerged, p.FinishedBy, "merged")
+			case StateClosed:
+				add(p, EventClosed, p.FinishedBy, "closed")
+			}
 		}
 	}
 	return events

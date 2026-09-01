@@ -195,8 +195,132 @@ func TestTheSweepSearchesTheFeedsScopeNotTheModes(t *testing.T) {
 		if !strings.Contains(q, "updated:>=2026-09-01T10:00:00+00:00") {
 			t.Errorf("unbounded sweep would refetch everything every interval: %q", q)
 		}
-		if !strings.Contains(q, "is:open") {
-			t.Errorf("the sweep is not restricted to open pull requests: %q", q)
+		// Emphatically not is:open. A merge is the one change that removes a
+		// pull request from an open-only search, so asking that way guarantees
+		// the sweep can never see the thing most worth reporting.
+		if strings.Contains(q, "is:open") {
+			t.Errorf("an open-only sweep can never watch a merge happen: %q", q)
+		}
+	}
+}
+
+// merged returns the same pull request after it has been merged.
+func merged(p gh.PR, by string, at time.Time) gh.PR {
+	p.State, p.FinishedAt, p.FinishedBy = gh.StateMerged, at, by
+	p.UpdatedAt = at
+	return p
+}
+
+// The reported miss. A merge is the one change that takes a pull request out of
+// an open-only search, so a sweep asking is:open watched it disappear and said
+// nothing at all.
+func TestTheSweepReportsAMerge(t *testing.T) {
+	m := newLoaded(t, 140, 40)
+
+	open := theirPR(747, "aaa", 2)
+	m = feedPoll(m, open)
+	before := len(m.events)
+
+	m = feedPoll(m, merged(open, "mike-guerrette", time.Now()))
+
+	var got gh.Event
+	var found bool
+	for _, e := range m.events[before:] {
+		if e.Kind == gh.EventMerged {
+			got, found = e, true
+		}
+	}
+	if !found {
+		t.Fatalf("the merge produced no event; got %+v", m.events[before:])
+	}
+	if got.Text != "merged" {
+		t.Errorf("the event reads %q", got.Text)
+	}
+	if got.Actor != "mike-guerrette" {
+		t.Errorf("the merge is attributed to %q", got.Actor)
+	}
+	if got.Key != "robinpowered/robin-ai-agents#747" {
+		t.Errorf("the event names %q", got.Key)
+	}
+}
+
+func TestTheSweepReportsAClose(t *testing.T) {
+	m := newLoaded(t, 140, 40)
+
+	open := theirPR(748, "aaa", 1)
+	m = feedPoll(m, open)
+	before := len(m.events)
+
+	closed := open
+	closed.State, closed.FinishedAt, closed.FinishedBy = gh.StateClosed, time.Now(), "dana-quill"
+	m = feedPoll(m, closed)
+
+	var found bool
+	for _, e := range m.events[before:] {
+		if e.Kind == gh.EventClosed {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("the close produced no event; got %+v", m.events[before:])
+	}
+}
+
+// Once it has finished it stays finished, and every later sweep must not say so
+// again.
+func TestAMergeIsReportedOnlyOnce(t *testing.T) {
+	m := newLoaded(t, 140, 40)
+
+	open := theirPR(747, "aaa", 2)
+	m = feedPoll(m, open)
+	done := merged(open, "mike-guerrette", time.Now())
+	m = feedPoll(m, done)
+	after := len(m.events)
+
+	m = feedPoll(m, done)
+	m = feedPoll(m, done)
+
+	if len(m.events) != after {
+		t.Errorf("later sweeps reported the merge %d more times", len(m.events)-after)
+	}
+}
+
+// A pull request merged before the sweep ever saw it open is still news, so
+// long as it finished inside the window this sweep was asked for.
+func TestAMergeIsReportedEvenOnAFirstSighting(t *testing.T) {
+	m := newLoaded(t, 140, 40)
+	m.lastFeedPoll = time.Now().Add(-10 * time.Minute)
+
+	old := theirPR(700, "aaa", 4)
+	old.CreatedAt = time.Now().Add(-30 * 24 * time.Hour)
+	m = feedPoll(m, merged(old, "mike-guerrette", time.Now().Add(-2*time.Minute)))
+
+	var found bool
+	for _, e := range m.events {
+		if e.Kind == gh.EventMerged {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("a merge on a pull request never seen open went unreported; got %+v", m.events)
+	}
+}
+
+// The dashboard's own poll is is:open, so nothing it returns ever carries a
+// finished state — and it must not start inventing merges from that.
+func TestTheListPollStillReportsNoMerges(t *testing.T) {
+	now := time.Now()
+	m := newSeeding(t, 0)
+	m = update(m, fetchDoneMsg{seq: m.fetchSeq, res: history(now)})
+	before := len(m.events)
+
+	next := history(now)
+	next.PRs[0].IssueComments = 9
+	m = update(m, fetchDoneMsg{seq: m.fetchSeq, res: next})
+
+	for _, e := range m.events[before:] {
+		if e.Kind == gh.EventMerged || e.Kind == gh.EventClosed {
+			t.Errorf("the list poll invented %q from an open-only search", e.Text)
 		}
 	}
 }

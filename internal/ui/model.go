@@ -683,10 +683,11 @@ func (m Model) applyFeedPoll(msg feedPollDoneMsg) (Model, tea.Cmd) {
 		}
 		// Never seen before, which for a sweep bounded by updated:>= says
 		// nothing about age: most first sightings are old pull requests that
-		// simply changed for the first time since ghpr started. Only one
-		// created inside this sweep's own window is news — anything older was
-		// the backfill's to report, and reporting it here would say it twice.
-		if !p.CreatedAt.Before(since) {
+		// simply changed for the first time since ghpr started. Only one that
+		// began or ended inside this sweep's own window is news — anything
+		// else was the backfill's to report, and reporting it here would say
+		// it twice.
+		if !p.CreatedAt.Before(since) || (!p.FinishedAt.IsZero() && !p.FinishedAt.Before(since)) {
 			next = append(next, p)
 		}
 	}

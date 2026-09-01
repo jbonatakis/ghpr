@@ -194,7 +194,10 @@ func FeedPollSearches(extra string, since time.Time, shapes []Shape) []string {
 	extra = strings.TrimSpace(extra)
 	out := make([]string, 0, len(shapes))
 	for _, shape := range shapes {
-		q := "is:open is:pr archived:false " + shape.qualifier() +
+		// Deliberately not is:open. A merge is the one change that removes a
+		// pull request from an open-only search, so asking that way guarantees
+		// the sweep can never see the thing most worth reporting.
+		q := "is:pr archived:false " + shape.qualifier() +
 			"updated:>=" + since.UTC().Format(iso) + " " + extra
 		out = append(out, strings.TrimSpace(q))
 	}
